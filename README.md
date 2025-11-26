@@ -33,11 +33,33 @@ source venv/bin/activate  # Windows: venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-### 2. 実行（Phase 1実装後）
+### 2. 実行
 
 ```bash
 python main.py
 ```
+
+ボットが起動したら、Discordで音声メッセージを送信してください。
+
+### 3. 使い方
+
+1. **Discordボットを招待**
+   - [SETUP.md](./SETUP.md) の手順に従ってボットを作成し、サーバーに招待
+
+2. **音声メッセージを送信**
+   - スマホのDiscordアプリでマイク長押し → 練習内容を話す
+   - 例：「今日はサーブの練習をしました。トスを上げる時に左手を脱力すると、自然な回旋が生まれることに気づきました...」
+
+3. **自動処理**
+   - ボットが音声を文字起こし
+   - Gemini AIが構造化データを抽出
+   - Obsidian形式のMarkdownを生成
+   - GitHubリポジトリに自動Push
+
+4. **結果確認**
+   - Discordに処理結果が表示される
+   - GitHubリポジトリで詳細を確認
+   - Obsidianでノートを閲覧
 
 ## 📁 プロジェクト構成
 
@@ -58,19 +80,26 @@ isdf_tennis_discovery_agent/
 
 ## 📋 開発ロードマップ
 
-### Phase 1: 記録の構造化 ✅ **準備中**
-- 音声入力 → Gemini文字起こし → Obsidian形式保存
-- まずは「喋るだけで綺麗なノートができる」体験を作る
+### Phase 1: 記録の構造化 ✅ **完了**
+- ✅ 音声入力 → Gemini文字起こし → Obsidian形式保存
+- ✅ Discordボットによる音声メッセージ受信
+- ✅ Gemini 1.5 Flashによる構造化データ抽出
+- ✅ Obsidian Callout形式のMarkdown生成
+- ✅ GitHubへの自動Push
+- まずは「喋るだけで綺麗なノートができる」体験を実現
 
-### Phase 2: 継続性の担保
+### Phase 2: 継続性の担保 🔜 **次のステップ**
 - 前回ログの読み込み
 - 練習開始時のリマインド機能
+- /start, /finish コマンドの実装
 
 ### Phase 3: 対話の深化
 - ソクラテス式問答の精度向上
+- より深い気づきを促す質問生成
 
 ### Phase 4: 資産の活用
 - ベクトル検索による「感覚検索」機能
+- 不調時の過去の好調感覚の提示
 
 ## 🛡️ セキュリティ
 
@@ -84,4 +113,5 @@ MIT License
 
 ---
 
-**⚠️ 注意**: 現在Phase 1の準備段階です。実装はこれから開始します。
+**✅ Phase 1実装完了**: 音声からObsidianノートへの自動変換が可能です。
+次のステップはPhase 2（継続性の担保）です。
