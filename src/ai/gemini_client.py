@@ -82,7 +82,7 @@ class GeminiClient:
             raise ValueError("GEMINI_API_KEY not found in environment variables")
 
         genai.configure(api_key=self.api_key)
-        self.model = genai.GenerativeModel("gemini-2.0-flash-exp")
+        self.model = genai.GenerativeModel("gemini-2.5-flash")
 
     async def process_voice_message(self, audio_file_path: str) -> PracticeSession:
         """
