@@ -15,7 +15,7 @@ from src.ai.gemini_client import GeminiClient
 from src.storage.github_sync import GitHubSync
 from src.storage.markdown_builder import MarkdownBuilder
 from src.storage.obsidian_manager import ObsidianManager
-from src.bot.channel_handler import detect_scene_from_channel, get_scene_emoji
+from src.bot.channel_handler import detect_scene_from_channel, get_scene_emoji, is_reflection_channel
 
 # Load environment variables
 load_dotenv()
@@ -83,7 +83,11 @@ class TennisDiscoveryBot(commands.Bot):
         if message.content and not message.content.startswith('!'):
             # Skip very short messages (probably not practice notes)
             if len(message.content.strip()) > 10:
-                await self._process_text_message(message)
+                # Check if this is a reflection/review channel
+                if is_reflection_channel(message.channel.name):
+                    await self._process_reflection_message(message)
+                else:
+                    await self._process_text_message(message)
                 return
 
         # Process commands
@@ -379,6 +383,134 @@ class TennisDiscoveryBot(commands.Bot):
         except Exception as e:
             error_msg = f"❌ エラーが発生しました: {str(e)}"
             print(f"Error processing text message: {e}")
+
+            if self.debug:
+                import traceback
+                traceback.print_exc()
+
+            await message.reply(error_msg)
+
+    async def _process_reflection_message(self, message: discord.Message):
+        """
+        Process a reflection/review message for appending to previous memos.
+
+        Args:
+            message: Discord message object
+        """
+        try:
+            # Send "thinking" message
+            thinking_msg = await message.reply("🔍 過去のメモを検索中...")
+
+            if self.debug:
+                print(f"📝 Processing reflection message: {message.content[:100]}")
+
+            # Extract date and keywords from message
+            date_text = None
+            keywords = []
+
+            # Simple keyword extraction (words longer than 2 characters)
+            words = message.content.split()
+            for word in words:
+                # Skip common Japanese particles and connectors
+                if word not in ["です", "ます", "した", "でした", "から", "ので", "けど", "が", "は", "を", "に", "で", "と"]:
+                    if len(word) > 2:
+                        keywords.append(word)
+
+            # Use fuzzy search to find matching memos
+            await thinking_msg.edit(content="🔍 関連するメモを探しています...")
+            candidates = self.obsidian_manager.find_memo_by_fuzzy_criteria(
+                date_text=message.content,  # Let ObsidianManager extract date
+                keywords=keywords[:5],  # Limit to top 5 keywords
+                scene_name=None  # Search across all scenes
+            )
+
+            if not candidates:
+                await thinking_msg.edit(content="❌ 該当するメモが見つかりませんでした。\n日付やキーワードを含めてもう一度お試しください。")
+                return
+
+            # Use the most recent match
+            target_memo = candidates[0]
+
+            if self.debug:
+                print(f"✅ Found target memo: {target_memo.get('file_name')}")
+
+            # Append reflection to the memo
+            await thinking_msg.edit(content="📝 追記を保存中...")
+            success = self.obsidian_manager.append_to_memo(
+                file_path=target_memo['file_path'],
+                append_text=message.content,
+                section_title="振り返り・追記"
+            )
+
+            if not success:
+                await thinking_msg.edit(content="❌ 追記の保存に失敗しました。")
+                return
+
+            # Push updated memo to GitHub
+            await thinking_msg.edit(content="📤 GitHubにアップロード中...")
+            try:
+                with open(target_memo['file_path'], 'r', encoding='utf-8') as f:
+                    updated_content = f.read()
+
+                # Extract date from target memo for commit message
+                target_date = target_memo.get('date', 'unknown')
+                target_scene = target_memo.get('scene', '不明')
+
+                # Push to GitHub
+                commit_message = f"Append reflection: {target_date} ({target_scene})"
+                file_url = self.github_sync._push_file(
+                    file_path=target_memo['file_path'].replace(str(self.obsidian_manager.vault_path) + "/", ""),
+                    content=updated_content,
+                    commit_message=commit_message
+                )
+            except Exception as e:
+                if self.debug:
+                    print(f"Error pushing to GitHub: {e}")
+                file_url = None
+
+            # Create success embed
+            embed = discord.Embed(
+                title="📝 振り返りメモを追記しました",
+                description=f"**{target_date}** の **{target_scene}** メモに追記",
+                color=discord.Color.gold()
+            )
+
+            embed.add_field(
+                name="📄 追記したメモ",
+                value=f"`{target_memo.get('file_name')}`",
+                inline=False
+            )
+
+            embed.add_field(
+                name="💭 追記内容",
+                value=message.content[:200] + ("..." if len(message.content) > 200 else ""),
+                inline=False
+            )
+
+            if file_url:
+                embed.add_field(
+                    name="📁 GitHub",
+                    value=f"[ファイルを見る]({file_url})",
+                    inline=False
+                )
+
+            # Show other candidates if there were multiple matches
+            if len(candidates) > 1:
+                other_memos = "\n".join([
+                    f"• {m.get('date')} - {m.get('scene', '不明')}"
+                    for m in candidates[1:3]  # Show up to 2 more
+                ])
+                embed.add_field(
+                    name="ℹ️ 他の候補",
+                    value=f"次のメモも見つかりました:\n{other_memos}",
+                    inline=False
+                )
+
+            await thinking_msg.edit(content=None, embed=embed)
+
+        except Exception as e:
+            error_msg = f"❌ エラーが発生しました: {str(e)}"
+            print(f"Error processing reflection message: {e}")
 
             if self.debug:
                 import traceback
