@@ -4,12 +4,13 @@ Gemini API client for processing voice messages and extracting structured data.
 import json
 import os
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Dict, Any
 
 import google.generativeai as genai
 from dotenv import load_dotenv
 
 from src.models.session import PracticeSession
+from src.ai.structured_extraction import extract_structured_data, ensure_required_fields
 
 # Load environment variables
 load_dotenv()
@@ -92,15 +93,20 @@ class GeminiClient:
         genai.configure(api_key=self.api_key)
         self.model = genai.GenerativeModel("gemini-2.5-flash")
 
-    async def process_voice_message(self, audio_file_path: str) -> PracticeSession:
+    async def process_voice_message(
+        self,
+        audio_file_path: str,
+        scene_type: str = "free_practice"
+    ) -> tuple[PracticeSession, Dict[str, Any]]:
         """
         Process a voice message and extract structured practice session data.
 
         Args:
             audio_file_path: Path to the audio file (mp3, ogg, wav, etc.)
+            scene_type: Scene type (wall_practice, school, match, etc.)
 
         Returns:
-            PracticeSession object with extracted data
+            Tuple of (PracticeSession object, scene_specific_data dict)
 
         Raises:
             FileNotFoundError: If audio file doesn't exist
@@ -114,17 +120,21 @@ class GeminiClient:
         print(f"📝 Transcribing audio file: {audio_path.name}")
         transcript = await self._transcribe_audio(audio_path)
 
-        # Step 2: Extract structured data
-        print("🧠 Extracting structured data...")
+        # Step 2: Extract structured data (scene-specific)
+        print(f"🧠 Extracting structured data for scene: {scene_type}...")
+        scene_data = await extract_structured_data(transcript, scene_type, self.model)
+        scene_data = ensure_required_fields(scene_data, scene_type)
+
+        # Step 3: Extract legacy format for PracticeSession (backward compatibility)
         session_data = await self._extract_structured_data(transcript)
 
-        # Step 3: Create PracticeSession object
+        # Step 4: Create PracticeSession object
         session = PracticeSession(
             raw_transcript=transcript,
             **session_data
         )
 
-        return session
+        return session, scene_data
 
     async def _transcribe_audio(self, audio_path: Path) -> str:
         """

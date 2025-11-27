@@ -3,11 +3,12 @@ Markdown file builder for Obsidian format.
 """
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Dict, Any
 
 import yaml
 
 from src.models.session import PracticeSession
+from src.storage.markdown_templates import build_markdown_for_scene
 
 
 class MarkdownBuilder:
@@ -22,6 +23,31 @@ class MarkdownBuilder:
         """
         self.output_dir = output_dir or Path("./output")
         self.output_dir.mkdir(parents=True, exist_ok=True)
+
+    def build_for_scene(
+        self,
+        scene_type: str,
+        scene_name: str,
+        scene_data: Dict[str, Any],
+        raw_transcript: str = ""
+    ) -> str:
+        """
+        Build markdown content from scene-specific data.
+
+        Args:
+            scene_type: Scene type (wall_practice, school, etc.)
+            scene_name: Scene display name (壁打ち, スクール, etc.)
+            scene_data: Scene-specific structured data
+            raw_transcript: Raw transcript text
+
+        Returns:
+            Markdown content as string
+        """
+        # Add date if not present
+        if 'date' not in scene_data:
+            scene_data['date'] = datetime.now().strftime('%Y-%m-%d')
+
+        return build_markdown_for_scene(scene_type, scene_name, scene_data, raw_transcript)
 
     def build(self, session: PracticeSession) -> str:
         """
@@ -189,17 +215,20 @@ class MarkdownBuilder:
 {session.raw_transcript}
 """
 
-    def get_filename_for_session(self, session: PracticeSession) -> str:
+    def get_filename_for_session(self, session: PracticeSession, scene_name: str = "") -> str:
         """
         Generate filename for a session.
 
         Args:
             session: PracticeSession object
+            scene_name: Scene name for the filename (optional)
 
         Returns:
-            Filename string (e.g., "2025-11-26-practice.md")
+            Filename string (e.g., "2025-11-26-壁打ち.md" or "2025-11-26-practice.md")
         """
         date_str = session.date.strftime("%Y-%m-%d")
+        if scene_name:
+            return f"{date_str}-{scene_name}.md"
         return f"{date_str}-practice.md"
 
     def get_relative_path_for_session(self, session: PracticeSession, base_path: str = "sessions") -> str:

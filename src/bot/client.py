@@ -13,6 +13,7 @@ from dotenv import load_dotenv
 from src.ai.gemini_client import GeminiClient
 from src.storage.github_sync import GitHubSync
 from src.storage.markdown_builder import MarkdownBuilder
+from src.bot.channel_handler import detect_scene_from_channel, get_scene_emoji
 
 # Load environment variables
 load_dotenv()
@@ -96,8 +97,13 @@ class TennisDiscoveryBot(commands.Bot):
             attachment: Audio attachment
         """
         try:
+            # Detect scene from channel name
+            channel_name = message.channel.name
+            scene_type, scene_name = detect_scene_from_channel(channel_name)
+            scene_emoji = get_scene_emoji(scene_type)
+
             # Send "thinking" message
-            thinking_msg = await message.reply("🎙️ 音声を処理中...")
+            thinking_msg = await message.reply(f"{scene_emoji} 音声を処理中... (シーン: {scene_name})")
 
             # Download audio file to temporary location
             with tempfile.NamedTemporaryFile(
@@ -109,29 +115,31 @@ class TennisDiscoveryBot(commands.Bot):
 
             if self.debug:
                 print(f"📥 Downloaded audio file: {attachment.filename} ({attachment.size} bytes)")
+                print(f"🎬 Detected scene: {scene_name} ({scene_type})")
 
-            # Process with Gemini
-            await thinking_msg.edit(content="🧠 Geminiで分析中...")
-            session = await self.gemini_client.process_voice_message(tmp_path)
+            # Process with Gemini (scene-aware)
+            await thinking_msg.edit(content=f"🧠 Geminiで分析中... (シーン: {scene_name})")
+            session, scene_data = await self.gemini_client.process_voice_message(tmp_path, scene_type)
 
             if self.debug:
                 print(f"✅ Session processed: {session.condition}, {len(session.success_patterns)} successes")
 
             # Build and save markdown locally (optional, for debugging)
             if self.debug:
-                local_path = self.markdown_builder.save(session)
+                local_path = self.markdown_builder.save(session,
+                                                       self.markdown_builder.get_filename_for_session(session, scene_name))
                 print(f"💾 Saved locally: {local_path}")
 
-            # Push to GitHub
+            # Push to GitHub (with scene name)
             await thinking_msg.edit(content="📤 GitHubにアップロード中...")
-            file_url = self.github_sync.push_session(session)
+            file_url = self.github_sync.push_session(session, scene_name=scene_name)
 
             # Clean up temporary file
             Path(tmp_path).unlink(missing_ok=True)
 
             # Create success embed
             embed = discord.Embed(
-                title="✅ 練習記録を保存しました",
+                title=f"{scene_emoji} {scene_name}の記録を保存しました",
                 description=session.summary or "音声メッセージを記録しました",
                 color=discord.Color.green()
             )

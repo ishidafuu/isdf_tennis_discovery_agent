@@ -51,7 +51,8 @@ class GitHubSync:
     def push_session(
         self,
         session: PracticeSession,
-        commit_message: Optional[str] = None
+        commit_message: Optional[str] = None,
+        scene_name: str = ""
     ) -> str:
         """
         Push practice session to GitHub repository.
@@ -59,6 +60,7 @@ class GitHubSync:
         Args:
             session: PracticeSession object
             commit_message: Custom commit message. If None, auto-generated.
+            scene_name: Scene name for the filename (e.g., "壁打ち", "スクール")
 
         Returns:
             URL of the created/updated file
@@ -70,13 +72,17 @@ class GitHubSync:
         builder = MarkdownBuilder()
         markdown_content = builder.build(session)
 
-        # Generate file path
-        file_path = builder.get_relative_path_for_session(session, self.base_path)
+        # Generate file path with scene name
+        year = session.date.strftime("%Y")
+        month = session.date.strftime("%m")
+        filename = builder.get_filename_for_session(session, scene_name)
+        file_path = f"{self.base_path}/{year}/{month}/{filename}"
 
         # Generate commit message
         if commit_message is None:
             date_str = session.date.strftime("%Y-%m-%d")
-            commit_message = f"Add practice session: {date_str}"
+            scene_suffix = f" ({scene_name})" if scene_name else ""
+            commit_message = f"Add practice session: {date_str}{scene_suffix}"
 
         # Push to GitHub
         print(f"📤 Pushing to GitHub: {file_path}")
