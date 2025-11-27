@@ -16,8 +16,6 @@
 
 ### 1. セットアップ
 
-詳細な手順は **[SETUP.md](./SETUP.md)** を参照してください。
-
 ```bash
 # リポジトリをクローン（既に完了している場合はスキップ）
 git clone https://github.com/ishidafuu/isdf_tennis_discovery_agent.git
@@ -31,7 +29,14 @@ cp .env.example .env
 python3 -m venv venv
 source venv/bin/activate  # Windows: venv\Scripts\activate
 pip install -r requirements.txt
+
+# セットアップ確認（推奨）
+python check_setup.py
 ```
+
+詳細ガイド：
+- **全体の流れ**: [SETUP.md](./SETUP.md)
+- **Discord Bot作成**: [docs/DISCORD_SETUP.md](./docs/DISCORD_SETUP.md)
 
 ### 2. 実行
 

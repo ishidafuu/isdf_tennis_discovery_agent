@@ -11,6 +11,10 @@
 - モデル: Gemini 1.5 Flash
 
 #### 🤖 Discord Bot Token（未取得の場合）
+
+**詳細な手順は [docs/DISCORD_SETUP.md](./docs/DISCORD_SETUP.md) を参照してください。**
+
+簡易手順：
 1. [Discord Developer Portal](https://discord.com/developers/applications) にアクセス
 2. 「New Application」をクリック
 3. アプリケーション名を入力（例：Tennis Discovery Agent）
