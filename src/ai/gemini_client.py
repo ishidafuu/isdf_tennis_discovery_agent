@@ -196,6 +196,43 @@ class GeminiClient:
         except json.JSONDecodeError as e:
             raise ValueError(f"Failed to parse JSON response: {e}\nResponse: {response.text}")
 
+    async def process_text_message(
+        self,
+        text: str,
+        scene_type: str = "free_practice",
+        urls: list[str] = None
+    ) -> tuple[PracticeSession, Dict[str, Any]]:
+        """
+        Process a text message and extract structured practice session data.
+
+        Args:
+            text: Text message content
+            scene_type: Scene type (wall_practice, school, match, etc.)
+            urls: List of URLs found in the text
+
+        Returns:
+            Tuple of (PracticeSession object, scene_specific_data dict)
+        """
+        # Extract structured data (scene-specific)
+        print(f"🧠 Extracting structured data from text for scene: {scene_type}...")
+        scene_data = await extract_structured_data(text, scene_type, self.model)
+        scene_data = ensure_required_fields(scene_data, scene_type)
+
+        # Add URLs if present
+        if urls:
+            scene_data['urls'] = urls
+
+        # Extract legacy format for PracticeSession (backward compatibility)
+        session_data = await self._extract_structured_data(text)
+
+        # Create PracticeSession object
+        session = PracticeSession(
+            raw_transcript=text,
+            **session_data
+        )
+
+        return session, scene_data
+
     async def generate_followup_question(self, session: PracticeSession) -> str:
         """
         Generate a Socratic follow-up question to deepen reflection.

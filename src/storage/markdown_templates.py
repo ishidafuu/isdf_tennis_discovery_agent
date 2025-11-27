@@ -240,6 +240,98 @@ def build_match_markdown(data: Dict[str, Any], raw_transcript: str = "") -> str:
     return markdown
 
 
+def build_text_memo_markdown(data: Dict[str, Any], scene_name: str = "メモ", raw_text: str = "") -> str:
+    """
+    テキストメモのMarkdown生成
+
+    Args:
+        data: 構造化データ
+        scene_name: シーン表示名
+        raw_text: 元のテキスト
+
+    Returns:
+        Markdown文字列
+    """
+    date_str = data.get('date', datetime.now().strftime('%Y-%m-%d'))
+
+    # Frontmatter
+    frontmatter_data = {
+        "date": date_str,
+        "scene": scene_name,
+        "input_type": "text",
+        "tags": data.get('tags', ['tennis']),
+    }
+    frontmatter = yaml.dump(frontmatter_data, allow_unicode=True, sort_keys=False)
+
+    markdown = f"""---
+{frontmatter}---
+
+# {scene_name} - {date_str}
+
+"""
+
+    # URLs（あれば表示）
+    if data.get('urls'):
+        markdown += f"""## 🔗 参考URL
+
+"""
+        for url in data['urls']:
+            markdown += f"- {url}\n"
+        markdown += "\n"
+
+    # 練習内容
+    if data.get('practice_content'):
+        markdown += f"""## 練習内容
+
+{data['practice_content']}
+
+"""
+
+    # 気づき
+    if data.get('realization'):
+        markdown += f"""## 気づき
+
+> [!note] メモ
+> {data['realization']}
+
+"""
+
+    # 課題
+    if data.get('issue'):
+        markdown += f"""## 課題
+
+{data['issue']}
+
+"""
+
+    # 次回やること
+    if data.get('next_action'):
+        markdown += f"""## 次回やること
+
+{data['next_action']}
+
+"""
+
+    # サマリー追加
+    if data.get('summary'):
+        markdown += f"""## 📊 サマリー
+
+{data['summary']}
+
+"""
+
+    # 元のテキスト
+    if raw_text:
+        markdown += f"""---
+
+## 📝 元のテキスト
+
+{raw_text}
+"""
+
+    return markdown
+
+
 def build_generic_markdown(data: Dict[str, Any], scene_name: str = "その他", raw_transcript: str = "") -> str:
     """
     汎用メモのMarkdown生成
