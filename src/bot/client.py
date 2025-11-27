@@ -61,12 +61,20 @@ class TennisDiscoveryBot(commands.Bot):
         if message.author == self.user:
             return
 
-        # Process voice messages
+        # Process attachments (audio, images, videos)
         if message.attachments:
             for attachment in message.attachments:
                 # Check if it's an audio file (Discord voice messages are usually .ogg)
                 if self._is_audio_file(attachment.filename):
                     await self._process_voice_message(message, attachment)
+                    return
+                # Check if it's an image file
+                elif self._is_image_file(attachment.filename):
+                    await self._process_image_message(message, attachment)
+                    return
+                # Check if it's a video file
+                elif self._is_video_file(attachment.filename):
+                    await self._process_video_message(message, attachment)
                     return
 
         # Process text messages (if there's content and not a command)
@@ -91,6 +99,32 @@ class TennisDiscoveryBot(commands.Bot):
         """
         audio_extensions = [".ogg", ".mp3", ".wav", ".m4a", ".opus", ".webm"]
         return any(filename.lower().endswith(ext) for ext in audio_extensions)
+
+    def _is_image_file(self, filename: str) -> bool:
+        """
+        Check if file is an image file.
+
+        Args:
+            filename: File name
+
+        Returns:
+            True if it's an image file
+        """
+        image_extensions = [".jpg", ".jpeg", ".png", ".gif"]
+        return any(filename.lower().endswith(ext) for ext in image_extensions)
+
+    def _is_video_file(self, filename: str) -> bool:
+        """
+        Check if file is a video file.
+
+        Args:
+            filename: File name
+
+        Returns:
+            True if it's a video file
+        """
+        video_extensions = [".mp4", ".mov", ".avi", ".webm"]
+        return any(filename.lower().endswith(ext) for ext in video_extensions)
 
     def _extract_urls(self, text: str) -> list[str]:
         """
@@ -327,6 +361,404 @@ class TennisDiscoveryBot(commands.Bot):
                 traceback.print_exc()
 
             await message.reply(error_msg)
+
+    async def _process_image_message(
+        self,
+        message: discord.Message,
+        attachment: discord.Attachment
+    ):
+        """
+        Process an image message attachment.
+
+        Args:
+            message: Discord message object
+            attachment: Image attachment
+        """
+        try:
+            # File size check (20MB limit)
+            max_size = 20 * 1024 * 1024  # 20MB
+            if attachment.size > max_size:
+                await message.reply("❌ ファイルサイズが大きすぎます（上限20MB）")
+                return
+
+            # Detect scene from channel name
+            channel_name = message.channel.name
+            scene_type, scene_name = detect_scene_from_channel(channel_name)
+            scene_emoji = get_scene_emoji(scene_type)
+
+            # Send "thinking" message
+            thinking_msg = await message.reply(f"📸 画像を保存中... (シーン: {scene_name})")
+
+            # Get vault path from environment
+            vault_path = os.getenv("OBSIDIAN_VAULT_PATH", "./obsidian_vault")
+            attachments_dir = Path(vault_path) / "attachments"
+
+            # Generate filename: YYYY-MM-DD_シーン名_HHMMSS.ext
+            from datetime import datetime
+            now = datetime.now()
+            date_str = now.strftime("%Y-%m-%d")
+            time_str = now.strftime("%H%M%S")
+            ext = Path(attachment.filename).suffix
+            filename = f"{date_str}_{scene_name}_{time_str}{ext}"
+
+            # Create date-based subdirectory
+            date_dir = attachments_dir / date_str
+            date_dir.mkdir(parents=True, exist_ok=True)
+
+            # Download and save image
+            image_path = date_dir / filename
+            await attachment.save(image_path)
+
+            if self.debug:
+                print(f"📥 Downloaded image: {attachment.filename} ({attachment.size} bytes)")
+                print(f"💾 Saved to: {image_path}")
+                print(f"🎬 Detected scene: {scene_name} ({scene_type})")
+
+            # Create memo data
+            memo_data = {
+                'date': date_str,
+                'scene': scene_name,
+                'input_type': 'image',
+                'file_path': f"attachments/{date_str}/{filename}",
+                'user_comment': message.content if message.content else "",
+                'tags': ['tennis', scene_type, 'image']
+            }
+
+            # Build markdown for image memo
+            await thinking_msg.edit(content=f"📝 Markdownを生成中... (シーン: {scene_name})")
+            markdown_content = self._build_image_markdown(memo_data, scene_name)
+
+            # Create PracticeSession object for GitHub push
+            from src.models.session import PracticeSession
+            session = PracticeSession(
+                raw_transcript=f"画像メモ: {message.content if message.content else '(コメントなし)'}",
+                summary=f"画像メモ ({scene_name})",
+                tags=memo_data['tags']
+            )
+            session.date = now
+
+            # Override markdown builder to use our custom markdown
+            await thinking_msg.edit(content="📤 GitHubにアップロード中...")
+            file_url = self._push_image_memo_to_github(session, markdown_content, scene_name)
+
+            # Create success embed
+            embed = discord.Embed(
+                title=f"{scene_emoji} {scene_name}の画像メモを保存しました",
+                description=memo_data['user_comment'] or "画像を記録しました",
+                color=discord.Color.purple()
+            )
+
+            embed.add_field(
+                name="📸 画像ファイル",
+                value=f"`{filename}`",
+                inline=False
+            )
+
+            if memo_data['user_comment']:
+                embed.add_field(
+                    name="💭 コメント",
+                    value=memo_data['user_comment'],
+                    inline=False
+                )
+
+            embed.add_field(
+                name="📁 GitHub",
+                value=f"[ファイルを見る]({file_url})",
+                inline=False
+            )
+
+            embed.set_footer(text=f"📅 {date_str}")
+
+            await thinking_msg.edit(content=None, embed=embed)
+
+        except Exception as e:
+            error_msg = f"❌ エラーが発生しました: {str(e)}"
+            print(f"Error processing image message: {e}")
+
+            if self.debug:
+                import traceback
+                traceback.print_exc()
+
+            await message.reply(error_msg)
+
+    async def _process_video_message(
+        self,
+        message: discord.Message,
+        attachment: discord.Attachment
+    ):
+        """
+        Process a video message attachment.
+
+        Args:
+            message: Discord message object
+            attachment: Video attachment
+        """
+        try:
+            # File size check (20MB limit)
+            max_size = 20 * 1024 * 1024  # 20MB
+            if attachment.size > max_size:
+                await message.reply("❌ ファイルサイズが大きすぎます（上限20MB）")
+                return
+
+            # Detect scene from channel name
+            channel_name = message.channel.name
+            scene_type, scene_name = detect_scene_from_channel(channel_name)
+            scene_emoji = get_scene_emoji(scene_type)
+
+            # Send "thinking" message
+            thinking_msg = await message.reply(f"🎥 動画を保存中... (シーン: {scene_name})")
+
+            # Get vault path from environment
+            vault_path = os.getenv("OBSIDIAN_VAULT_PATH", "./obsidian_vault")
+            attachments_dir = Path(vault_path) / "attachments"
+
+            # Generate filename: YYYY-MM-DD_シーン名_HHMMSS.ext
+            from datetime import datetime
+            now = datetime.now()
+            date_str = now.strftime("%Y-%m-%d")
+            time_str = now.strftime("%H%M%S")
+            ext = Path(attachment.filename).suffix
+            filename = f"{date_str}_{scene_name}_{time_str}{ext}"
+
+            # Create date-based subdirectory
+            date_dir = attachments_dir / date_str
+            date_dir.mkdir(parents=True, exist_ok=True)
+
+            # Download and save video
+            video_path = date_dir / filename
+            await attachment.save(video_path)
+
+            if self.debug:
+                print(f"📥 Downloaded video: {attachment.filename} ({attachment.size} bytes)")
+                print(f"💾 Saved to: {video_path}")
+                print(f"🎬 Detected scene: {scene_name} ({scene_type})")
+
+            # Create memo data
+            memo_data = {
+                'date': date_str,
+                'scene': scene_name,
+                'input_type': 'video',
+                'file_path': f"attachments/{date_str}/{filename}",
+                'user_comment': message.content if message.content else "",
+                'tags': ['tennis', scene_type, 'video']
+            }
+
+            # Build markdown for video memo
+            await thinking_msg.edit(content=f"📝 Markdownを生成中... (シーン: {scene_name})")
+            markdown_content = self._build_video_markdown(memo_data, scene_name)
+
+            # Create PracticeSession object for GitHub push
+            from src.models.session import PracticeSession
+            session = PracticeSession(
+                raw_transcript=f"動画メモ: {message.content if message.content else '(コメントなし)'}",
+                summary=f"動画メモ ({scene_name})",
+                tags=memo_data['tags']
+            )
+            session.date = now
+
+            # Override markdown builder to use our custom markdown
+            await thinking_msg.edit(content="📤 GitHubにアップロード中...")
+            file_url = self._push_video_memo_to_github(session, markdown_content, scene_name)
+
+            # Create success embed
+            embed = discord.Embed(
+                title=f"{scene_emoji} {scene_name}の動画メモを保存しました",
+                description=memo_data['user_comment'] or "動画を記録しました",
+                color=discord.Color.orange()
+            )
+
+            embed.add_field(
+                name="🎥 動画ファイル",
+                value=f"`{filename}`",
+                inline=False
+            )
+
+            if memo_data['user_comment']:
+                embed.add_field(
+                    name="💭 コメント",
+                    value=memo_data['user_comment'],
+                    inline=False
+                )
+
+            embed.add_field(
+                name="📁 GitHub",
+                value=f"[ファイルを見る]({file_url})",
+                inline=False
+            )
+
+            embed.set_footer(text=f"📅 {date_str}")
+
+            await thinking_msg.edit(content=None, embed=embed)
+
+        except Exception as e:
+            error_msg = f"❌ エラーが発生しました: {str(e)}"
+            print(f"Error processing video message: {e}")
+
+            if self.debug:
+                import traceback
+                traceback.print_exc()
+
+            await message.reply(error_msg)
+
+    def _build_image_markdown(self, memo_data: dict, scene_name: str) -> str:
+        """
+        Build markdown content for image memo.
+
+        Args:
+            memo_data: Memo data dictionary
+            scene_name: Scene display name
+
+        Returns:
+            Markdown content as string
+        """
+        import yaml
+        from datetime import datetime
+
+        # Frontmatter
+        frontmatter_data = {
+            "date": memo_data['date'],
+            "scene": scene_name,
+            "input_type": "image",
+            "tags": memo_data.get('tags', ['tennis', 'image']),
+        }
+        frontmatter = yaml.dump(frontmatter_data, allow_unicode=True, sort_keys=False)
+
+        markdown = f"""---
+{frontmatter}---
+
+# 画像メモ - {scene_name} - {memo_data['date']}
+
+## 📸 画像
+
+![[{memo_data['file_path']}]]
+
+"""
+
+        # User comment
+        if memo_data.get('user_comment'):
+            markdown += f"""## 💭 メモ
+
+{memo_data['user_comment']}
+
+"""
+
+        return markdown
+
+    def _build_video_markdown(self, memo_data: dict, scene_name: str) -> str:
+        """
+        Build markdown content for video memo.
+
+        Args:
+            memo_data: Memo data dictionary
+            scene_name: Scene display name
+
+        Returns:
+            Markdown content as string
+        """
+        import yaml
+        from datetime import datetime
+
+        # Frontmatter
+        frontmatter_data = {
+            "date": memo_data['date'],
+            "scene": scene_name,
+            "input_type": "video",
+            "tags": memo_data.get('tags', ['tennis', 'video']),
+        }
+        frontmatter = yaml.dump(frontmatter_data, allow_unicode=True, sort_keys=False)
+
+        markdown = f"""---
+{frontmatter}---
+
+# 動画メモ - {scene_name} - {memo_data['date']}
+
+## 🎥 動画
+
+![[{memo_data['file_path']}]]
+
+"""
+
+        # User comment
+        if memo_data.get('user_comment'):
+            markdown += f"""## 💭 メモ
+
+{memo_data['user_comment']}
+
+"""
+
+        return markdown
+
+    def _push_image_memo_to_github(
+        self,
+        session,
+        markdown_content: str,
+        scene_name: str
+    ) -> str:
+        """
+        Push image memo to GitHub repository.
+
+        Args:
+            session: PracticeSession object
+            markdown_content: Markdown content to push
+            scene_name: Scene name for the filename
+
+        Returns:
+            URL of the created/updated file
+        """
+        from src.storage.markdown_builder import MarkdownBuilder
+
+        builder = MarkdownBuilder()
+        year = session.date.strftime("%Y")
+        month = session.date.strftime("%m")
+        filename = builder.get_filename_for_session(session, f"{scene_name}-画像")
+        file_path = f"{self.github_sync.base_path}/{year}/{month}/{filename}"
+
+        date_str = session.date.strftime("%Y-%m-%d")
+        commit_message = f"Add image memo: {date_str} ({scene_name})"
+
+        file_url = self.github_sync._push_file(
+            file_path=file_path,
+            content=markdown_content,
+            commit_message=commit_message
+        )
+
+        return file_url
+
+    def _push_video_memo_to_github(
+        self,
+        session,
+        markdown_content: str,
+        scene_name: str
+    ) -> str:
+        """
+        Push video memo to GitHub repository.
+
+        Args:
+            session: PracticeSession object
+            markdown_content: Markdown content to push
+            scene_name: Scene name for the filename
+
+        Returns:
+            URL of the created/updated file
+        """
+        from src.storage.markdown_builder import MarkdownBuilder
+
+        builder = MarkdownBuilder()
+        year = session.date.strftime("%Y")
+        month = session.date.strftime("%m")
+        filename = builder.get_filename_for_session(session, f"{scene_name}-動画")
+        file_path = f"{self.github_sync.base_path}/{year}/{month}/{filename}"
+
+        date_str = session.date.strftime("%Y-%m-%d")
+        commit_message = f"Add video memo: {date_str} ({scene_name})"
+
+        file_url = self.github_sync._push_file(
+            file_path=file_path,
+            content=markdown_content,
+            commit_message=commit_message
+        )
+
+        return file_url
 
     async def setup_hook(self):
         """Setup hook called before the bot starts."""
