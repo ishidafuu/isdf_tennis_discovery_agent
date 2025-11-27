@@ -217,19 +217,20 @@ class MarkdownBuilder:
 
     def get_filename_for_session(self, session: PracticeSession, scene_name: str = "") -> str:
         """
-        Generate filename for a session.
+        Generate filename for a session with timestamp for uniqueness.
 
         Args:
             session: PracticeSession object
             scene_name: Scene name for the filename (optional)
 
         Returns:
-            Filename string (e.g., "2025-11-26-壁打ち.md" or "2025-11-26-practice.md")
+            Filename string (e.g., "2025-11-26-143052-壁打ち.md" or "2025-11-26-143052-practice.md")
         """
         date_str = session.date.strftime("%Y-%m-%d")
+        time_str = session.date.strftime("%H%M%S")
         if scene_name:
-            return f"{date_str}-{scene_name}.md"
-        return f"{date_str}-practice.md"
+            return f"{date_str}-{time_str}-{scene_name}.md"
+        return f"{date_str}-{time_str}-practice.md"
 
     def get_relative_path_for_session(self, session: PracticeSession, base_path: str = "sessions") -> str:
         """
