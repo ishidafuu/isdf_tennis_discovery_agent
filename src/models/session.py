@@ -28,7 +28,7 @@ class PracticeSession(BaseModel):
     """練習セッション全体のデータ"""
     date: datetime = Field(default_factory=datetime.now, description="練習日時")
     tags: list[str] = Field(default_factory=list, description="技術タグ（serve, volley等）")
-    condition: str = Field(default="normal", description="全体的な調子（good/normal/bad）")
+    condition: Optional[str] = Field(default="normal", description="全体的な調子（good/normal/bad）")
 
     # 身体感覚（検索の肝）
     somatic_marker: Optional[str] = Field(None, description="好調時の主観的な身体感覚")

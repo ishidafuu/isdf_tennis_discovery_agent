@@ -64,8 +64,16 @@ class GeminiClient:
   "summary": "練習の簡潔な要約（2-3文）"
 }}
 
-**注意:**
-- ユーザーが明示的に言及していない項目は空配列[]にする
+**重要な注意事項:**
+- すべてのフィールドは必須です。値がない場合でも null ではなく、以下のデフォルト値を使用してください：
+  - tags: 空配列 []
+  - condition: "normal"
+  - somatic_marker: "" (空文字列)
+  - success_patterns: 空配列 []
+  - failure_patterns: 空配列 []
+  - next_actions: 空配列 []
+  - summary: "" (空文字列)
+- ユーザーが明示的に言及していない項目は空配列[]または空文字列""にする
 - 推測や一般論は避け、ユーザーの実際の体験のみを抽出する
 - JSON以外のテキストは出力しない
 """
@@ -161,6 +169,19 @@ class GeminiClient:
 
         try:
             data = json.loads(response.text)
+
+            # Ensure required fields have default values if None
+            if data.get("condition") is None:
+                data["condition"] = "normal"
+            if data.get("tags") is None:
+                data["tags"] = []
+            if data.get("success_patterns") is None:
+                data["success_patterns"] = []
+            if data.get("failure_patterns") is None:
+                data["failure_patterns"] = []
+            if data.get("next_actions") is None:
+                data["next_actions"] = []
+
             return data
         except json.JSONDecodeError as e:
             raise ValueError(f"Failed to parse JSON response: {e}\nResponse: {response.text}")
