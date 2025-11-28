@@ -16,6 +16,7 @@ from src.storage.github_sync import GitHubSync
 from src.storage.markdown_builder import MarkdownBuilder
 from src.storage.obsidian_manager import ObsidianManager
 from src.bot.channel_handler import detect_scene_from_channel, get_scene_emoji, is_reflection_channel
+from src.scheduler.scheduler_manager import SchedulerManager
 
 # Load environment variables
 load_dotenv()
@@ -38,6 +39,7 @@ class TennisDiscoveryBot(commands.Bot):
         self.github_sync = GitHubSync()
         self.markdown_builder = MarkdownBuilder()
         self.obsidian_manager = ObsidianManager()
+        self.scheduler_manager = SchedulerManager(bot=self)
 
         # Debug mode
         self.debug = os.getenv("DEBUG", "false").lower() == "true"
@@ -51,6 +53,9 @@ class TennisDiscoveryBot(commands.Bot):
 
         # Check GitHub connection
         self.github_sync.check_connection()
+
+        # Process pending DMs (sent while bot was offline)
+        await self._process_pending_dms()
 
     async def on_message(self, message: discord.Message):
         """
@@ -967,9 +972,161 @@ class TennisDiscoveryBot(commands.Bot):
                 print(f"Error getting previous log: {e}")
             return None
 
+    async def _process_pending_dms(self):
+        """
+        Process pending DMs sent while bot was offline.
+
+        This method checks the admin user's DMs for unprocessed messages
+        and processes them automatically.
+        """
+        try:
+            # Get admin user ID from environment
+            admin_user_id = os.getenv("ADMIN_USER_ID")
+            if not admin_user_id:
+                if self.debug:
+                    print("⚠️ ADMIN_USER_ID not set, skipping DM processing")
+                return
+
+            admin_user_id = int(admin_user_id)
+
+            if self.debug:
+                print(f"🔍 Checking pending DMs for user: {admin_user_id}")
+
+            # Fetch admin user
+            admin_user = await self.fetch_user(admin_user_id)
+            dm_channel = await admin_user.create_dm()
+
+            pending_count = 0
+
+            # Check last 50 messages
+            async for message in dm_channel.history(limit=50):
+                # Skip messages from bot itself
+                if message.author == self.user:
+                    continue
+
+                # Skip messages that already have ✅ reaction
+                if any(r.emoji == '✅' for r in message.reactions):
+                    continue
+
+                # Process attachments
+                if message.attachments:
+                    for attachment in message.attachments:
+                        # Extract scene from message content
+                        scene_type, scene_name = self._extract_scene_from_dm_text(message.content)
+
+                        # Process based on file type
+                        if self._is_audio_file(attachment.filename):
+                            await self._process_voice_message_from_dm(message, attachment, scene_type, scene_name)
+                            pending_count += 1
+                        elif self._is_image_file(attachment.filename):
+                            # Create a temporary message object for processing
+                            await self._process_image_message(message, attachment)
+                            pending_count += 1
+                        elif self._is_video_file(attachment.filename):
+                            await self._process_video_message(message, attachment)
+                            pending_count += 1
+
+                        # Mark as processed
+                        await message.add_reaction('✅')
+
+            # Send completion notification
+            if pending_count > 0:
+                await dm_channel.send(f"✅ Bot復旧後、未処理メモを {pending_count} 件処理しました")
+                print(f"✅ Processed {pending_count} pending DM(s)")
+            elif self.debug:
+                print("📭 No pending DMs to process")
+
+        except Exception as e:
+            print(f"❌ Error processing pending DMs: {e}")
+            if self.debug:
+                import traceback
+                traceback.print_exc()
+
+    def _extract_scene_from_dm_text(self, text: str) -> tuple[str, str]:
+        """
+        Extract scene information from DM text.
+
+        Args:
+            text: DM message content
+
+        Returns:
+            Tuple of (scene_type, scene_display_name)
+        """
+        if not text:
+            return ("free_practice", "その他")
+
+        text_lower = text.lower()
+
+        # Scene keywords
+        if "壁打ち" in text or "wall" in text_lower:
+            return ("wall_practice", "壁打ち")
+        elif "スクール" in text or "school" in text_lower or "lesson" in text_lower:
+            return ("school", "スクール")
+        elif "試合" in text or "match" in text_lower or "game" in text_lower:
+            return ("match", "試合")
+        elif "フリー練習" in text or "free" in text_lower:
+            return ("free_practice", "フリー練習")
+
+        # Default to free practice
+        return ("free_practice", "その他")
+
+    async def _process_voice_message_from_dm(
+        self,
+        message: discord.Message,
+        attachment: discord.Attachment,
+        scene_type: str,
+        scene_name: str
+    ):
+        """
+        Process a voice message from DM.
+
+        Args:
+            message: Discord message object
+            attachment: Audio attachment
+            scene_type: Scene type (wall_practice, school, etc.)
+            scene_name: Scene display name
+        """
+        try:
+            scene_emoji = get_scene_emoji(scene_type)
+
+            # Download audio file to temporary location
+            with tempfile.NamedTemporaryFile(
+                delete=False,
+                suffix=Path(attachment.filename).suffix
+            ) as tmp_file:
+                tmp_path = tmp_file.name
+                await attachment.save(tmp_path)
+
+            if self.debug:
+                print(f"📥 Processing DM voice: {attachment.filename} ({scene_name})")
+
+            # Process with Gemini (scene-aware)
+            session, scene_data = await self.gemini_client.process_voice_message(tmp_path, scene_type)
+
+            # Push to GitHub (with scene name)
+            file_url = self.github_sync.push_session(session, scene_name=scene_name)
+
+            # Clean up temporary file
+            Path(tmp_path).unlink(missing_ok=True)
+
+            # Send confirmation
+            await message.reply(f"{scene_emoji} {scene_name}の記録を保存しました\n📁 {file_url}")
+
+        except Exception as e:
+            error_msg = f"❌ エラーが発生しました: {str(e)}"
+            print(f"Error processing DM voice message: {e}")
+            await message.reply(error_msg)
+        finally:
+            # Clean up temporary file if it still exists
+            if 'tmp_path' in locals():
+                Path(tmp_path).unlink(missing_ok=True)
+
     async def setup_hook(self):
         """Setup hook called before the bot starts."""
         print("🔧 Setting up bot...")
+
+        # Start scheduler for weekly reviews and reminders
+        self.scheduler_manager.start()
 
 
 def create_bot() -> TennisDiscoveryBot:
