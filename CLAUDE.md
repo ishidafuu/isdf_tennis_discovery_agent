@@ -1,0 +1,185 @@
+# Tennis Discovery Agent
+
+## 概要
+
+自律的な上達を支援する「第2の脳」。Discord + Gemini AI + Obsidianを連携し、音声メモから構造化された練習記録を生成。「仮説・実行・検証」のサイクルを回し、ユーザーの上達を支援する。
+
+## 技術スタック
+
+- **フロントエンド**: Discord Bot（音声入力）
+- **AI処理**: Google Gemini 2.5 Flash API（文字起こし・構造化抽出）
+- **ストレージ**: Obsidian Vault（Markdown形式）、GitHub（バージョン管理）
+- **言語**: Python 3
+- **主要ライブラリ**: discord.py, google-generativeai
+- **インフラ**: Raspberry Pi（本番環境）
+
+## ディレクトリ構造
+
+- `src/bot/` - Discord Bot メインロジック、チャンネル・シーン検出
+- `src/ai/` - Gemini API処理、プロンプト、構造化データ抽出
+- `src/storage/` - Markdown生成、GitHub連携、Obsidian管理
+- `src/models/` - データモデル（PracticeSession）
+- `docs/` - プロジェクトドキュメント、実装計画、進捗管理
+- `tests/` - テストコード
+
+## 重要なコマンド
+
+```bash
+# 開発環境
+source venv/bin/activate
+python main.py
+
+# セットアップ確認
+python check_setup.py
+
+# サービス管理（Raspberry Pi本番環境）
+sudo systemctl start tennis-bot
+sudo systemctl status tennis-bot
+sudo journalctl -u tennis-bot -f
+
+# GitHub同期
+cd ~/obsidian-vault
+git add .
+git commit -m "Update practice logs"
+git push origin main
+```
+
+## Discordチャンネル構成
+
+- `#壁打ち` - 壁打ち練習の記録
+- `#スクール` - スクール練習の記録
+- `#試合` - 試合の記録
+- `#フリー練習` - フリー練習の記録
+- `#振り返り` - 後日の追記・補足（あいまい検索で過去メモに追記）
+
+## コーディング規約
+
+- **型ヒント必須**: 関数シグネチャに型アノテーションを使用
+- **エラーハンドリング徹底**: try-exceptでAPIエラー、ファイル操作エラーを捕捉
+- **ログ出力**: 重要な処理には logging を使用（本番環境でのデバッグ用）
+- **非同期処理**: Discord Bot関連は async/await パターン
+- **環境変数**: 機密情報（APIキー等）は .env で管理、絶対にコミットしない
+
+## アーキテクチャ原則
+
+### コアフィロソフィー
+1. **Voice First**: 練習現場でのUXを最優先、手入力ではなく音声中心
+2. **Cycle Oriented**: 前回→今回→次回の「線」の管理
+3. **No Teaching, But Coaching**: 答えを教えず、問いかけで気づきを引き出す
+
+### ファイル命名規則
+- **練習メモ**: `YYYY-MM-DD-HHMMSS-シーン名.md`（タイムスタンプで一意性保証）
+- **画像・動画**: `attachments/{date}/YYYY-MM-DD_シーン名_HHMMSS.ext`
+
+### Git LFS管理対象
+- 画像: jpg, jpeg, png, gif
+- 動画: mp4, mov, avi, webm
+- 音声: ogg, mp3, wav, m4a, opus
+
+---
+
+## ★ 自律行動ルール（重要）
+
+### タスク完了時（自動実行）
+
+実装・修正・テストが完了したと判断したら、**指示を待たずに以下を実行**：
+
+1. **`docs/plan.md` の該当タスクを `[x]` に更新**
+2. **`docs/session-log.md` に追記**（フォーマット例は下記）
+3. **重要な設計判断・アーキテクチャ変更**があれば `CLAUDE.md` の「最近の変更」セクションに追記
+4. **完了報告**と「`/clear` → `/start` で次へ」を提案
+
+#### session-log.md への記録フォーマット
+
+```markdown
+## YYYY-MM-DD HH:MM
+**完了**: [タスク名]
+**変更ファイル**: src/xxx/yyy.py, tests/test_zzz.py
+**次回の作業**: [次に取り組むべきタスク]
+**備考**: [技術的な決定事項、制約、重要なコンテキスト]
+```
+
+### 完了の判断基準
+
+以下をすべて満たす場合、タスクを完了とみなす：
+- 要求機能が実装された
+- 関連するテストが通った（または手動で動作確認済み）
+- エラーなく動作確認済み
+- コードレビュー可能な状態（型ヒント、エラーハンドリング、ログ出力が適切）
+
+### 終了の兆候を検知した場合
+
+ユーザーが以下のようなメッセージを送信したら、**終了処理を実行**：
+- 「ありがとう」「OK」「了解」「おつかれさま」
+- 「今日はここまで」「一旦終了」
+- その他、明確に終了を示唆する発言
+
+**終了処理内容:**
+1. 上記の「タスク完了時」処理を実行
+2. 現在の進捗状況をサマリーとして報告
+3. 次回セッションで取り組むべきタスクを提案
+4. 「次回 `/start` で再開できます」と明示
+
+### 中断時（未完了のまま終了する場合）
+
+タスクが完了していない状態で中断する場合は、`docs/session-log.md` に以下を記録：
+
+```markdown
+## YYYY-MM-DD HH:MM （中断）
+**作業中**: [タスク名]
+**現在の状態**: [どこまで進んだか、何が完了/未完了か]
+**次回再開時のポイント**: [続きから再開するための重要な情報]
+**ブロッカー**: [あれば。待ちが発生している要因など]
+```
+
+---
+
+## 最近の変更
+
+### 2025-11-27
+- **ObsidianManager実装**: ファイル検索・あいまい検索・追記機能を追加（`src/storage/obsidian_manager.py`）
+- **振り返りチャンネル機能**: `#振り返り`チャンネルで過去メモに追記可能に（日付・キーワード抽出）
+- **前回ログ読み込み**: 同一シーンの最新メモを自動取得し、Discord応答に「🔄 サイクル」セクション表示
+- **画像・動画メモ機能**: 20MB制限、Git LFS管理、Obsidian埋め込み（`![[filepath]]`）
+- **Git LFS セットアップ**: `.gitattributes` でメディアファイルを管理
+
+### 2025-11-28
+- **プロジェクト管理構造の導入**: CLAUDE.md、docs/plan.md、docs/session-log.md、カスタムコマンド（/start, /status）を追加し、大規模プロジェクトの管理効率を向上
+
+---
+
+## 技術的制約・既知の問題
+
+### Git LFS容量制限
+- GitHub無料枠: 1GB/月のデータ転送
+- 画像・動画を頻繁に投稿すると3-6ヶ月で容量オーバーの可能性
+- 対策: Git LFS追加購入（$5/月で50GB）または画像圧縮
+
+### Gemini API制限
+- Gemini 2.5 Flash: 無料枠 1,500リクエスト/日
+- 音声文字起こし + 構造化抽出で2リクエスト/メモ
+- 1日750メモまで処理可能（実運用では十分）
+
+### Raspberry Pi性能
+- Raspberry Pi 3: 1GB RAM、処理速度やや遅い
+- 推奨: Raspberry Pi 4以上（2GB RAM以上）
+- ネットワーク経由のAPI呼び出しがボトルネック（ローカル処理は軽量）
+
+---
+
+## セキュリティ注意事項
+
+- **`.env` ファイル**を絶対にGitにコミットしない（`.gitignore`で除外）
+- **Discord Bot Token**、**Gemini API Key**は `.env` のみで管理
+- **プライベートリポジトリ**で運用（練習内容は個人情報）
+- **Obsidian Vault**の GitHub リポジトリもプライベート推奨
+
+---
+
+## 参考ドキュメント
+
+- **Phase 1全体**: `docs/improvements/phases/01-foundation/index.md`
+- **実装ステータス**: `docs/improvements/IMPLEMENTATION_STATUS.md`
+- **クイックスタート**: `docs/improvements/QUICKSTART.md`
+- **セットアップガイド**: `SETUP.md`
+- **プロジェクト管理ガイド**: このファイル（CLAUDE.md）の「自律行動ルール」セクション
