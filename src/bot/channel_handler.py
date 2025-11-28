@@ -36,6 +36,9 @@ def detect_scene_from_channel(channel_name: str) -> tuple[str, str]:
         "振り返り": ("reflection", "振り返り"),
         "reflection": ("reflection", "振り返り"),
         "review": ("reflection", "振り返り"),
+        "質問": ("question", "質問"),
+        "question": ("question", "質問"),
+        "qa": ("question", "質問"),
     }
 
     # 完全一致を試す
@@ -61,6 +64,20 @@ def is_reflection_channel(channel_name: str) -> bool:
     return scene_type == "reflection"
 
 
+def is_question_channel(channel_name: str) -> bool:
+    """
+    質問チャンネルかどうかを判定
+
+    Args:
+        channel_name: Discordチャンネル名
+
+    Returns:
+        質問チャンネルならTrue
+    """
+    scene_type, _ = detect_scene_from_channel(channel_name)
+    return scene_type == "question"
+
+
 def get_scene_emoji(scene_type: str) -> str:
     """
     シーンタイプに対応する絵文字を取得
@@ -77,6 +94,7 @@ def get_scene_emoji(scene_type: str) -> str:
         "match": "🏆",
         "free_practice": "🎾",
         "reflection": "📝",
+        "question": "❓",
     }
     return emoji_mapping.get(scene_type, "🎾")
 
@@ -97,5 +115,6 @@ def get_scene_description(scene_type: str) -> str:
         "match": "実戦・練習試合",
         "free_practice": "友人との自由練習",
         "reflection": "後日の追記・補足",
+        "question": "過去の記録を検索して質問に回答",
     }
     return description_mapping.get(scene_type, "練習記録")
