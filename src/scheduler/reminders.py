@@ -141,6 +141,169 @@ class ReminderManager:
                 import traceback
                 traceback.print_exc()
 
+    async def check_issue_progress(self, days_back: int = 14, max_issues: int = 3):
+        """
+        Check unresolved issues from recent memos and send progress reminder.
+
+        Args:
+            days_back: Number of days to look back for issues
+            max_issues: Maximum number of issues to include in reminder
+        """
+        try:
+            if not self.bot:
+                print("⚠️ Bot not available, skipping issue progress check")
+                return
+
+            # Get admin user
+            admin_user_id = os.getenv("ADMIN_USER_ID")
+            if not admin_user_id:
+                if self.debug:
+                    print("⚠️ ADMIN_USER_ID not set, skipping issue progress check")
+                return
+
+            admin_user_id = int(admin_user_id)
+
+            # Get recent memos (last N days)
+            end_date = datetime.now()
+            start_date = end_date - timedelta(days=days_back)
+            recent_memos = self.obsidian_manager.get_memos_in_range(
+                start_date=start_date,
+                end_date=end_date
+            )
+
+            if not recent_memos:
+                return
+
+            # Extract unresolved issues
+            unresolved_issues = []
+
+            for memo in recent_memos:
+                # Check for "issue", "next_action", or "課題" fields in body
+                date = memo.get('date', '不明')
+                body = memo.get('body', '')
+                scene = memo.get('scene', '不明')
+
+                # Extract issues from body
+                import re
+                patterns = [
+                    r'## (?:課題|Issue|次回)[^\n]*\n(.+?)(?=\n##|\Z)',
+                    r'課題.*?[:：]\s*(.+?)(?=\n|$)',
+                    r'次回.*?[:：]\s*(.+?)(?=\n|$)',
+                ]
+
+                for pattern in patterns:
+                    match = re.search(pattern, body, re.DOTALL)
+                    if match:
+                        issue_text = match.group(1).strip()
+
+                        # Check if this issue has been resolved in later memos
+                        is_resolved = await self._is_issue_resolved(
+                            issue_text,
+                            date,
+                            recent_memos
+                        )
+
+                        if not is_resolved:
+                            unresolved_issues.append({
+                                "date": date,
+                                "scene": scene,
+                                "issue": issue_text[:150]  # Limit length
+                            })
+                        break
+
+            # Remove duplicates (same issue text)
+            unique_issues = []
+            seen_texts = set()
+            for issue in unresolved_issues:
+                issue_text = issue['issue'].lower()
+                if issue_text not in seen_texts:
+                    unique_issues.append(issue)
+                    seen_texts.add(issue_text)
+
+            # Limit to max_issues
+            unique_issues = unique_issues[:max_issues]
+
+            if unique_issues:
+                # Send progress reminder
+                admin_user = await self.bot.fetch_user(admin_user_id)
+                dm_channel = await admin_user.create_dm()
+
+                message = """📊 **課題の進捗確認**
+
+以下の課題はまだ取り組み中ですか？
+
+"""
+                for issue in unique_issues:
+                    message += f"**{issue['date']}** ({issue['scene']})\n"
+                    message += f"  {issue['issue']}\n\n"
+
+                message += "取り組んだら、メモで報告してください！"
+
+                await dm_channel.send(message)
+                print(f"✅ Issue progress reminder sent ({len(unique_issues)} issues)")
+
+        except Exception as e:
+            print(f"❌ Error checking issue progress: {e}")
+            if self.debug:
+                import traceback
+                traceback.print_exc()
+
+    async def _is_issue_resolved(
+        self,
+        issue_text: str,
+        issue_date: str,
+        all_memos: list
+    ) -> bool:
+        """
+        Check if an issue has been resolved in later memos.
+
+        Args:
+            issue_text: The issue text to check
+            issue_date: Date of the memo with the issue
+            all_memos: All memos to search
+
+        Returns:
+            True if resolved, False otherwise
+        """
+        try:
+            # Get memos after the issue date
+            issue_datetime = datetime.strptime(issue_date, '%Y-%m-%d')
+            later_memos = [
+                m for m in all_memos
+                if datetime.strptime(m.get('date', '2000-01-01'), '%Y-%m-%d') > issue_datetime
+            ]
+
+            # Extract keywords from issue (simple approach)
+            import re
+            # Split by common particles and extract meaningful words
+            # Replace particles with spaces first
+            text_normalized = re.sub(r'[をのにはがとでからまでへやも]', ' ', issue_text)
+            # Extract Japanese words (including long vowel mark)
+            keywords = re.findall(r'[ぁ-んァ-ヴー一-龯a-zA-Z]{2,}', text_normalized)
+            # Remove common words and filter empty
+            keywords = [k for k in keywords if k and k not in ['できる', 'する', 'いる', 'ある', 'なる', 'させる', 'こと', 'もの', 'ため']]
+
+            # Need at least one keyword
+            if not keywords:
+                return False
+
+            # Check if any later memo mentions improvement or resolution
+            for memo in later_memos:
+                body = memo.get('body', '').lower()
+
+                # Check for resolution keywords
+                if any(keyword in body for keyword in ['改善', '解決', 'できた', 'うまくいった']):
+                    # Check if it's related to this issue
+                    matching_keywords = sum(1 for k in keywords if k.lower() in body)
+                    # Need at least half of keywords to match AND at least 1 keyword
+                    if matching_keywords > 0 and matching_keywords >= max(1, len(keywords) // 2):
+                        return True
+
+            return False
+
+        except Exception:
+            return False
+
     def _build_reminder_message(
         self,
         previous_memo: Optional[Dict[str, Any]],
@@ -234,3 +397,19 @@ async def check_inactive_users(bot, days: int = 3):
     """
     reminder_manager = ReminderManager(bot=bot)
     await reminder_manager.check_inactive_days(days_threshold=days)
+
+
+async def check_issue_progress(bot, days_back: int = 14, max_issues: int = 3):
+    """
+    Check unresolved issues and send progress reminder (convenience function).
+
+    Args:
+        bot: Discord bot instance
+        days_back: Number of days to look back for issues
+        max_issues: Maximum number of issues to include in reminder
+    """
+    reminder_manager = ReminderManager(bot=bot)
+    await reminder_manager.check_issue_progress(
+        days_back=days_back,
+        max_issues=max_issues
+    )
