@@ -103,3 +103,45 @@
 - Phase 3開始前に`client.py`のリファクタリングを推奨
 - ハンドラー（handlers/）とヘルパー（helpers/）を分離する構成を提案
 - 現状のままでもPhase 3開始は可能だが、保守性向上のため事前対応推奨
+
+---
+## 2025-11-29 (client.py 大規模リファクタリング)
+**完了**: client.pyの大規模リファクタリング（1,149行→136行に削減）
+**変更ファイル**:
+- src/bot/client.py（更新）- 1,149行→136行（88%削減）
+- src/bot/handlers/__init__.py（新規作成）
+- src/bot/handlers/dm_handler.py（新規作成、148行）
+- src/bot/handlers/message_handler.py（新規作成、670行）
+- src/bot/helpers/__init__.py（新規作成）
+- src/bot/helpers/media_utils.py（新規作成、89行）
+- src/bot/helpers/previous_log.py（新規作成、58行）
+- src/bot/helpers/markdown_helpers.py（新規作成、164行）
+
+**次回の作業**: Phase 3「資産の活用」の実装開始
+
+**備考**:
+- **削減率**: 88%削減（1,013行削除）
+- **新規ディレクトリ**: handlers/（メッセージ・DM処理）、helpers/（ユーティリティ）
+- **構文チェック**: 全ファイル合格 ✅
+- **機能**: 100%保持（ロジック変更なし）
+
+**分離された機能**:
+- handlers/message_handler.py: 5つのメッセージ処理関数
+  - process_voice_message(), process_text_message()
+  - process_reflection_message(), process_image_message(), process_video_message()
+- handlers/dm_handler.py: DM処理（Bot停止時の未処理メッセージ）
+- helpers/media_utils.py: メディアファイル判定・URL抽出
+- helpers/markdown_helpers.py: Markdown生成・GitHub push
+- helpers/previous_log.py: 前回ログ取得
+
+**技術的決定事項**:
+- メソッドからスタンドアロン関数に変換（第一引数: bot）
+- モジュール間の循環依存を回避（遅延インポート使用）
+- 型ヒント・docstringを全て保持
+- Phase 3実装の準備完了（コード拡張が容易に）
+
+**効果**:
+- 保守性: ✅ 大幅向上（ファイルサイズが1/8に）
+- テスタビリティ: ✅ 向上（関数単位でテスト可能）
+- 可読性: ✅ 向上（責務が明確に分離）
+- Phase 3準備: ✅ 完了
