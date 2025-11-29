@@ -151,8 +151,14 @@ isdf_tennis_discovery_agent/
 
 ## 📚 ドキュメント
 
-- **[機能一覧](./docs/FEATURES.md)** - 全機能の詳細説明
+### ユーザー向け
+- **[ストーリーガイド](./docs/STORY_GUIDE.md)** 🌟 - 3ヶ月で上達するまでの物語（おすすめ！）
+- **[使い方ガイド](./docs/USER_GUIDE.md)** - チャンネル別の使い方、Tips
 - **[セットアップガイド](./SETUP.md)** - 環境構築手順
+
+### 開発者向け
+- **[機能一覧](./docs/FEATURES.md)** - 全機能の詳細説明
+- **[アーキテクチャ](./docs/ARCHITECTURE.md)** - システム構成図・データフロー
 - **[実装計画](./docs/plan.md)** - Phase 1-4のタスクリスト
 - **[開発ログ](./docs/session-log.md)** - 実装履歴
 - **[プロジェクト管理](./CLAUDE.md)** - コーディング規約・自律行動ルール
