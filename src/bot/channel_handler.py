@@ -39,6 +39,9 @@ def detect_scene_from_channel(channel_name: str) -> tuple[str, str]:
         "質問": ("question", "質問"),
         "question": ("question", "質問"),
         "qa": ("question", "質問"),
+        "分析": ("analysis", "分析"),
+        "analysis": ("analysis", "分析"),
+        "analytics": ("analysis", "分析"),
     }
 
     # 完全一致を試す
@@ -78,6 +81,20 @@ def is_question_channel(channel_name: str) -> bool:
     return scene_type == "question"
 
 
+def is_analysis_channel(channel_name: str) -> bool:
+    """
+    分析チャンネルかどうかを判定
+
+    Args:
+        channel_name: Discordチャンネル名
+
+    Returns:
+        分析チャンネルならTrue
+    """
+    scene_type, _ = detect_scene_from_channel(channel_name)
+    return scene_type == "analysis"
+
+
 def get_scene_emoji(scene_type: str) -> str:
     """
     シーンタイプに対応する絵文字を取得
@@ -95,6 +112,7 @@ def get_scene_emoji(scene_type: str) -> str:
         "free_practice": "🎾",
         "reflection": "📝",
         "question": "❓",
+        "analysis": "📊",
     }
     return emoji_mapping.get(scene_type, "🎾")
 
