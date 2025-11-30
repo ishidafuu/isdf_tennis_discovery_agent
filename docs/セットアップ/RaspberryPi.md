@@ -38,7 +38,7 @@ OS: Raspberry Pi OS (64-bit)
 
 ```bash
 # ホスト名で接続
-ssh pi@tennis-bot.local
+ssh ishidafuu@isdf-pi.local
 
 # またはIPアドレスで接続
 ssh pi@192.168.1.xxx
