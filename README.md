@@ -57,7 +57,27 @@ python main.py
 
 ボットが起動したら、Discordで音声メッセージを送信してください。
 
-### 3. 使い方
+### 3. 更新 & 再起動（Raspberry Pi本番環境）
+
+Raspberry Piでsystemdサービスとして動かしている場合、以下のコマンドでBotを最新版に更新できます。
+
+```bash
+# スクリプトに実行権限を付与（初回のみ）
+chmod +x update_bot.sh
+
+# Botを更新して再起動
+./update_bot.sh
+```
+
+このスクリプトは以下の処理を自動実行します：
+1. Git Pullで最新コードを取得
+2. `pip install -r requirements.txt`でライブラリを更新
+3. `sudo systemctl restart tennis-bot`でサービスを再起動
+4. 起動ログを表示（動作確認用）
+
+**注意**: systemdサービスが設定されていない場合は、[SETUP.md](./SETUP.md)の「自動起動設定」を参照してください。
+
+### 4. 使い方
 
 1. **Discordボットを招待**
    - [SETUP.md](./SETUP.md) の手順に従ってボットを作成し、サーバーに招待

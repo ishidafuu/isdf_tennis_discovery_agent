@@ -420,3 +420,48 @@
 **ブランチ**: claude/organize-documentation-012NEcPhqKdyotxqS26aZSFA
 
 ---
+
+## 2025-11-30 (Raspberry Pi 更新＆再起動スクリプト実装)
+**完了**: ラズパイの更新＆再起動スクリプト実装
+**変更ファイル**:
+- update_bot.sh（新規作成、66行）- Git更新・ライブラリ更新・サービス再起動を一発実行
+- README.md（更新）- クイックスタートに更新スクリプトの説明を追加
+
+**次回の作業**: 実環境でのテスト、リファクタリング実施、またはPhase 5の検討
+
+**備考**:
+- **課題**: ラズパイでコード更新時に複数のコマンドを手動実行する必要があった
+- **対応**: 1つのスクリプトで「Git Pull → ライブラリ更新 → サービス再起動 → ログ表示」を自動化
+
+**スクリプトの機能**:
+1. プロジェクトディレクトリへ自動移動（`~/isdf_tennis_discovery_agent`）
+2. 現在のブランチ確認・表示
+3. `git pull`で最新コードを取得
+4. 仮想環境を有効化して`pip install -r requirements.txt`を実行
+5. `sudo systemctl restart tennis-bot`でsystemdサービスを再起動
+6. サービスの状態確認（`systemctl status`）
+7. 直近30行のログをリアルタイム表示（Ctrl+Cで終了）
+
+**使い方**:
+```bash
+# 初回のみ: 実行権限を付与
+chmod +x update_bot.sh
+
+# 更新＆再起動
+./update_bot.sh
+```
+
+**技術的決定事項**:
+- systemdサービス（tennis-bot.service）が設定済みであることを前提
+- エラーハンドリング: 各ステップで失敗時にエラーメッセージを表示して終了
+- ログ表示: `journalctl -f`でリアルタイムログを確認可能
+
+**効果**:
+- 運用効率: ✅ 大幅向上（コマンド5-6回 → 1回に削減）
+- エラー防止: ✅ 手順の抜け漏れを防止
+- 確認容易: ✅ 自動でログ表示、動作確認が即座に可能
+
+**コミット**: （次のステップで作成）
+**ブランチ**: claude/raspi-update-restart-script-014vjp2na99GnmfqNTpKPjHm
+
+---
