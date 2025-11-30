@@ -14,7 +14,7 @@ from src.ai.gemini_client import GeminiClient
 from src.storage.github_sync import GitHubSync
 from src.storage.markdown_builder import MarkdownBuilder
 from src.storage.obsidian_manager import ObsidianManager
-from src.bot.channel_handler import detect_scene_from_channel, is_reflection_channel
+from src.bot.channel_handler import detect_scene_from_channel, is_reflection_channel, is_allowed_channel
 from src.scheduler.scheduler_manager import SchedulerManager
 
 # Import handlers and helpers
@@ -76,6 +76,11 @@ class TennisDiscoveryBot(commands.Bot):
         """
         # Ignore messages from the bot itself
         if message.author == self.user:
+            return
+
+        # Check if the message is from an allowed channel
+        # Only respond in designated channels (壁打ち, スクール, 試合, フリー練習, 振り返り, 質問, 分析)
+        if not is_allowed_channel(message.channel.name):
             return
 
         # Process attachments (audio, images, videos)
