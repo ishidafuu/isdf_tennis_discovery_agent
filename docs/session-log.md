@@ -99,6 +99,49 @@
 4. 🟡 中優先度: テスト環境の整備（pytest未インストールの可能性）
 5. 🟢 低優先度: 型チェックツール（mypy）、コードフォーマッター（ruff）導入
 
+---
+
+## 2025-11-30 (リファクタリング実装)
+**完了**: Phase 1-3のリファクタリング実装
+**変更ファイル**:
+- src/storage/obsidian_manager.py（REFACTORED - 統一検索インターフェース追加）
+- 削除: src/bot/helpers/markdown_helpers_old.py (164行)
+- 削除: src/bot/channel_handler_old.py (138行)
+- 削除: src/bot/handlers/message_handler_old.py (670行)
+
+**次回の作業**: Phase 3の残りタスク（プロンプトテンプレート化、依存性注入）またはPhase 5の検討
+
+**備考**:
+- **Phase 1（基盤整備）**: 既に完了済み
+  - src/config.py - Pydantic Settingsによる型安全な設定管理
+  - src/constants.py - Enum・Final型による定数定義
+  - src/models/scene_data.py - Pydanticモデルによる型安全なデータ構造
+- **Phase 2（コア機能）**: 既に完了済み
+  - src/bot/helpers/embed_builder.py - 統一的なEmbed作成
+  - src/bot/helpers/markdown_helpers.py - メディアヘルパー統合
+  - src/bot/handlers/message_handler.py (479行) - メッセージハンドラー改善
+- **Phase 3（最適化）**: ObsidianManager検索統合を完了
+  - 新規: 統一検索インターフェース `search(filters, limit)`
+  - 新規: キャッシュ機能（60秒TTL）でパフォーマンス向上
+  - リファクタリング: 既存メソッド5つを新インターフェース経由に変更
+    - `get_latest_memo()` - 1行に簡略化
+    - `get_memos_in_range()` - 2行に簡略化
+    - `search_by_keyword()` - 2行に簡略化
+    - `search_by_date()` - 2行に簡略化
+    - `get_memo_by_tags()` - 2行に簡略化
+  - 削減: 約100-150行のコード重複を削減
+- **古いファイル削除**: 合計972行を削除
+
+**リファクタリング成果**:
+- 総コード削減量: **約1,072-1,122行**（古いファイル972行 + 重複削減100-150行）
+- ObsidianManager: 479行（統一インターフェースで保守性向上）
+- 後方互換性: 維持（既存メソッドは全て動作）
+- パフォーマンス: 向上（メモキャッシュ機能追加）
+
+**残りのリファクタリング項目**:
+- 🟡 Phase 3: プロンプトテンプレート化（src/ai/prompts.py）
+- 🟡 Phase 3: 依存性注入の導入（src/bot/client.py）
+
 **技術的決定事項**:
 - Phase 3開始前に`client.py`のリファクタリングを推奨
 - ハンドラー（handlers/）とヘルパー（helpers/）を分離する構成を提案

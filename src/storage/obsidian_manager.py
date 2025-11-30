@@ -1,5 +1,7 @@
 """
-Obsidian Vault file operations manager.
+Obsidian Vault file operations manager (REFACTORED).
+
+Unified search interface to reduce code duplication.
 """
 import os
 import re
@@ -8,6 +10,8 @@ from datetime import datetime, timedelta
 from typing import Optional, List, Dict, Any
 
 import yaml
+
+from src.models.scene_data import SearchFilters
 
 
 class ObsidianManager:
@@ -27,6 +31,11 @@ class ObsidianManager:
         self.vault_path.mkdir(parents=True, exist_ok=True)
         self.sessions_path.mkdir(parents=True, exist_ok=True)
 
+        # Cache for memos (invalidated on write operations)
+        self._memo_cache: Optional[List[Dict[str, Any]]] = None
+        self._cache_timestamp: Optional[datetime] = None
+        self._cache_ttl_seconds = 60  # Cache TTL: 60 seconds
+
     def get_latest_memo(
         self,
         scene_type: Optional[str] = None,
@@ -35,6 +44,8 @@ class ObsidianManager:
         """
         Get the latest memo, optionally filtered by scene.
 
+        REFACTORED: Now uses unified search interface.
+
         Args:
             scene_type: Scene type to filter by (wall_practice, school, match, etc.)
             scene_name: Scene display name to filter by (壁打ち, スクール, 試合, etc.)
@@ -42,24 +53,9 @@ class ObsidianManager:
         Returns:
             Dictionary containing memo data, or None if no memos found
         """
-        # Get all markdown files from sessions directory (recursively)
-        md_files = list(self.sessions_path.rglob("*.md"))
-
-        if not md_files:
-            return None
-
-        # Sort by modification time (newest first)
-        md_files.sort(key=lambda f: f.stat().st_mtime, reverse=True)
-
-        # Filter by scene if specified
-        if scene_name:
-            md_files = [f for f in md_files if scene_name in f.name]
-
-        if not md_files:
-            return None
-
-        # Parse and return the latest file
-        return self._parse_markdown(md_files[0])
+        filters = SearchFilters(scene_name=scene_name) if scene_name else None
+        results = self.search(filters=filters, limit=1)
+        return results[0] if results else None
 
     def get_memos_in_range(
         self,
@@ -70,6 +66,8 @@ class ObsidianManager:
         """
         Get memos within a date range.
 
+        REFACTORED: Now uses unified search interface.
+
         Args:
             start_date: Start date (inclusive)
             end_date: End date (inclusive)
@@ -78,32 +76,9 @@ class ObsidianManager:
         Returns:
             List of memo dictionaries, sorted by date
         """
-        md_files = list(self.sessions_path.rglob("*.md"))
-        memos = []
-
-        for file in md_files:
-            # Extract date from filename (YYYY-MM-DD format)
-            date_match = re.search(r'(\d{4}-\d{2}-\d{2})', file.name)
-            if not date_match:
-                continue
-
-            try:
-                file_date = datetime.strptime(date_match.group(1), '%Y-%m-%d')
-
-                # Check if within range
-                if start_date.date() <= file_date.date() <= end_date.date():
-                    # Filter by scene if specified
-                    if scene_name and scene_name not in file.name:
-                        continue
-
-                    memo = self._parse_markdown(file)
-                    if memo:
-                        memos.append(memo)
-            except ValueError:
-                continue
-
-        # Sort by date
-        return sorted(memos, key=lambda x: x.get('date', ''), reverse=True)
+        date_range = (start_date.strftime('%Y-%m-%d'), end_date.strftime('%Y-%m-%d'))
+        filters = SearchFilters(date_range=date_range, scene_name=scene_name)
+        return self.search(filters=filters, limit=1000)
 
     def search_by_keyword(
         self,
@@ -114,6 +89,8 @@ class ObsidianManager:
         """
         Search memos by keyword in content.
 
+        REFACTORED: Now uses unified search interface.
+
         Args:
             keyword: Keyword to search for
             scene_name: Optional scene name filter
@@ -122,30 +99,8 @@ class ObsidianManager:
         Returns:
             List of matching memo dictionaries
         """
-        md_files = list(self.sessions_path.rglob("*.md"))
-        matches = []
-
-        for file in md_files:
-            # Filter by scene if specified
-            if scene_name and scene_name not in file.name:
-                continue
-
-            try:
-                with open(file, 'r', encoding='utf-8') as f:
-                    content = f.read()
-
-                # Search for keyword (case-insensitive)
-                if keyword.lower() in content.lower():
-                    memo = self._parse_markdown(file)
-                    if memo:
-                        matches.append(memo)
-
-                        if len(matches) >= max_results:
-                            break
-            except Exception:
-                continue
-
-        return matches
+        filters = SearchFilters(keywords=[keyword], scene_name=scene_name)
+        return self.search(filters=filters, limit=max_results)
 
     def search_by_date(
         self,
@@ -155,6 +110,8 @@ class ObsidianManager:
         """
         Search memos by specific date.
 
+        REFACTORED: Now uses unified search interface.
+
         Args:
             target_date: Target date to search
             scene_name: Optional scene name filter
@@ -163,21 +120,8 @@ class ObsidianManager:
             List of memos from the specified date
         """
         date_str = target_date.strftime('%Y-%m-%d')
-        md_files = list(self.sessions_path.rglob("*.md"))
-        matches = []
-
-        for file in md_files:
-            # Check if filename contains the date
-            if date_str in file.name:
-                # Filter by scene if specified
-                if scene_name and scene_name not in file.name:
-                    continue
-
-                memo = self._parse_markdown(file)
-                if memo:
-                    matches.append(memo)
-
-        return sorted(matches, key=lambda x: x.get('timestamp', ''))
+        filters = SearchFilters(date_range=(date_str, date_str), scene_name=scene_name)
+        return self.search(filters=filters, limit=100)
 
     def get_memo_by_tags(
         self,
@@ -187,6 +131,8 @@ class ObsidianManager:
         """
         Search memos by tags.
 
+        REFACTORED: Now uses unified search interface.
+
         Args:
             tags: List of tags to search for
             match_all: If True, memo must have all tags. If False, any tag matches.
@@ -194,32 +140,8 @@ class ObsidianManager:
         Returns:
             List of matching memo dictionaries
         """
-        md_files = list(self.sessions_path.rglob("*.md"))
-        matches = []
-
-        for file in md_files:
-            memo = self._parse_markdown(file)
-            if not memo:
-                continue
-
-            memo_tags = memo.get('tags', [])
-            if not memo_tags:
-                continue
-
-            # Convert to lowercase for comparison
-            memo_tags_lower = [tag.lower() for tag in memo_tags]
-            search_tags_lower = [tag.lower() for tag in tags]
-
-            if match_all:
-                # All tags must match
-                if all(tag in memo_tags_lower for tag in search_tags_lower):
-                    matches.append(memo)
-            else:
-                # Any tag matches
-                if any(tag in memo_tags_lower for tag in search_tags_lower):
-                    matches.append(memo)
-
-        return sorted(matches, key=lambda x: x.get('date', ''), reverse=True)
+        filters = SearchFilters(tags=tags, match_all_tags=match_all)
+        return self.search(filters=filters, limit=100)
 
     def find_memo_by_fuzzy_criteria(
         self,
@@ -346,6 +268,167 @@ class ObsidianManager:
             print(f"Error parsing markdown file {file_path}: {e}")
             return None
 
+    # ========================================================================
+    # New unified search interface (Phase 3 refactoring)
+    # ========================================================================
+
+    def search(
+        self,
+        filters: Optional[SearchFilters] = None,
+        limit: int = 10
+    ) -> List[Dict[str, Any]]:
+        """
+        Unified search interface for memos.
+
+        This method consolidates the functionality of:
+        - search_by_keyword()
+        - search_by_date()
+        - get_memo_by_tags()
+        - get_memos_in_range()
+
+        Args:
+            filters: Search filters (keywords, tags, scene, date_range)
+            limit: Maximum number of results to return
+
+        Returns:
+            List of matching memos, sorted by date (newest first)
+        """
+        # Get all memos (with caching)
+        memos = self._get_all_memos()
+
+        # Apply filters if provided
+        if filters:
+            if filters.keywords:
+                memos = self._filter_by_keywords(memos, filters.keywords)
+
+            if filters.date_range:
+                memos = self._filter_by_date_range(memos, filters.date_range)
+
+            if filters.tags:
+                memos = self._filter_by_tags(memos, filters.tags, filters.match_all_tags)
+
+            if filters.scene_name:
+                memos = self._filter_by_scene(memos, filters.scene_name)
+
+        # Sort by date (newest first)
+        memos.sort(key=lambda x: x.get('date', ''), reverse=True)
+
+        return memos[:limit]
+
+    def _get_all_memos(self, force_refresh: bool = False) -> List[Dict[str, Any]]:
+        """
+        Get all memos from vault (with caching).
+
+        Args:
+            force_refresh: Force cache refresh
+
+        Returns:
+            List of all memo dictionaries
+        """
+        # Check cache validity
+        if not force_refresh and self._memo_cache is not None and self._cache_timestamp is not None:
+            cache_age = (datetime.now() - self._cache_timestamp).total_seconds()
+            if cache_age < self._cache_ttl_seconds:
+                return self._memo_cache
+
+        # Refresh cache
+        md_files = list(self.sessions_path.rglob("*.md"))
+        memos = []
+
+        for file in md_files:
+            memo = self._parse_markdown(file)
+            if memo:
+                memos.append(memo)
+
+        # Update cache
+        self._memo_cache = memos
+        self._cache_timestamp = datetime.now()
+
+        return memos
+
+    def _filter_by_keywords(
+        self,
+        memos: List[Dict[str, Any]],
+        keywords: List[str]
+    ) -> List[Dict[str, Any]]:
+        """Filter memos by keywords in content."""
+        filtered = []
+        for memo in memos:
+            content = f"{memo.get('body', '')} {' '.join(memo.get('tags', []))}".lower()
+            if any(kw.lower() in content for kw in keywords):
+                filtered.append(memo)
+        return filtered
+
+    def _filter_by_date_range(
+        self,
+        memos: List[Dict[str, Any]],
+        date_range: tuple[str, str]
+    ) -> List[Dict[str, Any]]:
+        """Filter memos by date range."""
+        start_str, end_str = date_range
+        start_date = datetime.strptime(start_str, '%Y-%m-%d').date()
+        end_date = datetime.strptime(end_str, '%Y-%m-%d').date()
+
+        filtered = []
+        for memo in memos:
+            memo_date_str = memo.get('date', '')
+            if not memo_date_str:
+                continue
+
+            try:
+                memo_date = datetime.strptime(memo_date_str, '%Y-%m-%d').date()
+                if start_date <= memo_date <= end_date:
+                    filtered.append(memo)
+            except ValueError:
+                continue
+
+        return filtered
+
+    def _filter_by_tags(
+        self,
+        memos: List[Dict[str, Any]],
+        tags: List[str],
+        match_all: bool = False
+    ) -> List[Dict[str, Any]]:
+        """Filter memos by tags."""
+        filtered = []
+        search_tags_lower = [tag.lower() for tag in tags]
+
+        for memo in memos:
+            memo_tags = memo.get('tags', [])
+            if not memo_tags:
+                continue
+
+            memo_tags_lower = [tag.lower() for tag in memo_tags]
+
+            if match_all:
+                # All tags must match
+                if all(tag in memo_tags_lower for tag in search_tags_lower):
+                    filtered.append(memo)
+            else:
+                # Any tag matches
+                if any(tag in memo_tags_lower for tag in search_tags_lower):
+                    filtered.append(memo)
+
+        return filtered
+
+    def _filter_by_scene(
+        self,
+        memos: List[Dict[str, Any]],
+        scene_name: str
+    ) -> List[Dict[str, Any]]:
+        """Filter memos by scene name."""
+        return [m for m in memos if scene_name in m.get('file_name', '')]
+
+    def _invalidate_cache(self):
+        """Invalidate memo cache (call this after write operations)."""
+        self._memo_cache = None
+        self._cache_timestamp = None
+
+    # ========================================================================
+    # End of unified search interface
+    # ========================================================================
+
     def append_to_memo(
         self,
         file_path: str,
@@ -385,6 +468,9 @@ class ObsidianManager:
 
             with open(path, 'w', encoding='utf-8') as f:
                 f.write(updated_content)
+
+            # Invalidate cache after write operation
+            self._invalidate_cache()
 
             return True
 
