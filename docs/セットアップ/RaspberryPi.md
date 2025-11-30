@@ -4,11 +4,12 @@
 
 Tennis Discovery AgentをRaspberry Piで常時稼働させるためのセットアップガイドです。
 
-**想定環境:**
-- Raspberry Pi 3/4/5（推奨: Raspberry Pi 4以上）
-- Raspberry Pi OS（Debian Bookworm推奨）
-- メモリ: 2GB以上推奨
-- ストレージ: 16GB以上のmicroSD
+**動作環境:**
+- Raspberry Pi 4 Model B
+- Raspberry Pi OS (64-bit)
+- ユーザー名: `ishidafuu`
+- ホスト名: `isdf-pi`
+- プロジェクト名: `isdf_tennis_discovery_agent`
 
 ---
 
@@ -16,7 +17,7 @@ Tennis Discovery AgentをRaspberry Piで常時稼働させるためのセット�
 
 ### 1.1 Raspberry Pi Imagerを使用
 
-1. [Raspberry Pi Imager](https://www.raspberrypi.com/software/)をダウンロード
+1. [Raspberry Pi Imager](https://www.raspberrypi.com/software/)をPCで起動
 2. microSDカードを挿入
 3. 設定:
 
@@ -26,23 +27,28 @@ OS: Raspberry Pi OS (64-bit)
 ```
 
 **詳細設定（歯車アイコン）:**
+重要: キーボード設定を誤ると記号が打てなくなるため注意してください。
+
 ```
-✅ ホスト名: tennis-bot
-✅ SSHを有効化
-✅ ユーザー名とパスワードを設定
-✅ Wi-Fi設定
+✅ ホスト名: isdf-pi
+✅ SSHを有効化（パスワード認証）
+✅ ユーザー名: ishidafuu
+✅ パスワード: （任意のパスワード）
+✅ Wi-Fi設定: （SSIDとパスワードを入力）
 ✅ タイムゾーン: Asia/Tokyo
+✅ キーボードレイアウト: us （※英字配列として設定推奨）
 ```
 
 ### 1.2 SSH接続
 
+PCのターミナルから接続します。
+
 ```bash
 # ホスト名で接続
 ssh ishidafuu@isdf-pi.local
-
-# またはIPアドレスで接続
-ssh pi@192.168.1.xxx
 ```
+
+※ 初回接続時は `yes` を入力し、設定したパスワードを入力します。
 
 ---
 
@@ -56,7 +62,7 @@ sudo apt upgrade -y
 sudo apt autoremove -y
 ```
 
-### 2.2 Python環境
+### 2.2 Python環境とGit
 
 ```bash
 # Python3とpip
@@ -76,33 +82,50 @@ git lfs install
 
 ### 3.1 クローンと仮想環境
 
+GitHubの認証にはパーソナルアクセストークン（PAT）が必要です。
+
 ```bash
-# プロジェクトをクローン
+# ホームディレクトリへ移動
 cd ~
-git clone https://github.com/YOUR_USERNAME/tennis-discovery-agent.git
+
+# プロジェクトをクローン
+git clone https://github.com/ishidafuu/isdf_tennis_discovery_agent.git
+
+# ディレクトリへ移動
+cd isdf_tennis_discovery_agent
 
 # 仮想環境を作成
-cd ~/tennis-discovery-agent
 python3 -m venv venv
+
+# 仮想環境を有効化
 source venv/bin/activate
 
 # 依存関係をインストール
 pip install -r requirements.txt
 ```
 
-### 3.2 環境変数
+### 3.2 環境変数 (.env)
 
 ```bash
 nano .env
 ```
 
+以下の内容を編集・保存（`Ctrl+O` -> `Enter` -> `Ctrl+X`）します。
+
 ```env
-DISCORD_BOT_TOKEN=your_token
-GEMINI_API_KEY=your_key
-OBSIDIAN_VAULT_PATH=/home/pi/obsidian-vault
-ADMIN_USER_ID=your_id
+DISCORD_BOT_TOKEN=your_token_here
+GEMINI_API_KEY=your_key_here
+# パスはユーザー名に合わせて変更
+OBSIDIAN_VAULT_PATH=/home/ishidafuu/obsidian-vault
+ADMIN_USER_ID=your_discord_user_id
 ENV=production
 LOG_LEVEL=INFO
+```
+
+### 3.3 データ保存用ディレクトリ作成
+
+```bash
+mkdir -p /home/ishidafuu/obsidian-vault
 ```
 
 ---
@@ -115,6 +138,8 @@ LOG_LEVEL=INFO
 sudo nano /etc/systemd/system/tennis-bot.service
 ```
 
+以下の内容を保存します。
+
 ```ini
 [Unit]
 Description=Tennis Discovery Agent Discord Bot
@@ -122,9 +147,9 @@ After=network.target
 
 [Service]
 Type=simple
-User=pi
-WorkingDirectory=/home/pi/tennis-discovery-agent
-ExecStart=/home/pi/tennis-discovery-agent/venv/bin/python3 /home/pi/tennis-discovery-agent/src/main.py
+User=ishidafuu
+WorkingDirectory=/home/ishidafuu/isdf_tennis_discovery_agent
+ExecStart=/home/ishidafuu/isdf_tennis_discovery_agent/venv/bin/python3 /home/ishidafuu/isdf_tennis_discovery_agent/main.py
 Restart=always
 RestartSec=10
 StandardOutput=journal
@@ -134,10 +159,10 @@ StandardError=journal
 WantedBy=multi-user.target
 ```
 
-### 4.2 サービスの有効化
+### 4.2 サービスの有効化と起動
 
 ```bash
-# デーモンをリロード
+# 設定を読み込み
 sudo systemctl daemon-reload
 
 # 自動起動を有効化
@@ -146,105 +171,89 @@ sudo systemctl enable tennis-bot
 # サービスを開始
 sudo systemctl start tennis-bot
 
-# 状態確認
+# 状態確認（active (running) なら成功）
 sudo systemctl status tennis-bot
 ```
 
 ---
 
-## 5. よく使うコマンド
+## 5. 運用・メンテナンス
 
+### 5.1 簡単アップデート用スクリプト
+
+Botの更新と再起動をワンコマンドで行うスクリプトを作成します。
+
+**スクリプト作成:**
 ```bash
-# サービス操作
-sudo systemctl stop tennis-bot
-sudo systemctl restart tennis-bot
-sudo systemctl status tennis-bot
-
-# ログ確認
-sudo journalctl -u tennis-bot -f      # リアルタイム
-sudo journalctl -u tennis-bot -n 100  # 最新100行
-
-# 手動起動（デバッグ）
-cd ~/tennis-discovery-agent
-source venv/bin/activate
-python3 src/main.py
+cd ~
+nano update_bot.sh
 ```
 
----
-
-## 6. メンテナンス
-
-### 6.1 コード更新
-
+**内容:**
 ```bash
-sudo systemctl stop tennis-bot
-cd ~/tennis-discovery-agent
-git pull origin main
+#!/bin/bash
+
+PROJECT_DIR="isdf_tennis_discovery_agent"
+
+echo "========================================"
+echo "🔄 Botの更新を開始します..."
+echo "========================================"
+
+cd ~/$PROJECT_DIR
+
+echo "📥 Git Pull..."
+git pull
+
+echo "📦 ライブラリ更新..."
 source venv/bin/activate
 pip install -r requirements.txt
-sudo systemctl start tennis-bot
+
+echo "========================================"
+echo "🚀 サービスを再起動します..."
+echo "========================================"
+
+sudo systemctl restart tennis-bot
+echo "✅ 再起動完了。直近のログを表示します（Ctrl+Cで終了）"
+sudo journalctl -u tennis-bot -n 20 -f
 ```
 
-### 6.2 バックアップ
-
+**実行権限の付与:**
 ```bash
-# Obsidian Vaultのバックアップ
-cd ~/obsidian-vault
-tar -czf ~/obsidian-backup-$(date +%Y%m%d).tar.gz .
+chmod +x update_bot.sh
 ```
+
+**使い方:**
+今後、Botを最新版にしたいときは以下を実行するだけです。
+```bash
+./update_bot.sh
+```
+
+### 5.2 よく使うコマンド一覧
+
+| 操作 | コマンド |
+|---|---|
+| **Botの状態確認** | `sudo systemctl status tennis-bot` |
+| **ログのリアルタイム表示** | `sudo journalctl -u tennis-bot -f` |
+| **Botの停止** | `sudo systemctl stop tennis-bot` |
+| **Botの再起動** | `sudo systemctl restart tennis-bot` |
+| **手動起動（デバッグ用）** | `source venv/bin/activate` → `python3 main.py` |
 
 ---
 
-## 7. トラブルシューティング
+## 6. トラブルシューティング
 
-### Botが起動しない
+### サービスが見つからない・起動しない
+- サービスファイルのパスやファイル名を確認 (`/etc/systemd/system/tennis-bot.service`)
+- ファイル内のパス（User名やフォルダ名）が間違っていないか確認
+- `sudo systemctl daemon-reload` を実行したか確認
 
+### ログにエラーが出る場合
 ```bash
-# エラーログを確認
-sudo journalctl -u tennis-bot -n 50
-
-# 手動で起動してエラーを確認
-cd ~/tennis-discovery-agent
-source venv/bin/activate
-python3 src/main.py
+# 詳細なログを確認
+sudo journalctl -u tennis-bot -n 50 --no-pager
 ```
 
-### メモリ不足
-
-```bash
-# メモリ確認
-free -h
-
-# スワップを増やす
-sudo fallocate -l 2G /swapfile
-sudo chmod 600 /swapfile
-sudo mkswap /swapfile
-sudo swapon /swapfile
-echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
-```
-
-### 温度監視
-
-```bash
-# CPU温度を確認
-vcgencmd measure_temp
-
-# 正常範囲: 40-70°C
-# 警告: 80°C以上
-```
+### アップデートスクリプトが動かない
+- `Permission denied` と出る場合 → `chmod +x update_bot.sh` を実行してください。
 
 ---
-
-## 8. 運用コスト
-
-```
-電力消費: 約3W（平均）
-月額電気代: 約58円（27円/kWh計算）
-年間コスト: 約700円
-```
-
----
-
-## 次のステップ
-
-- [環境変数と設定ファイル](05-environment.md)
