@@ -130,3 +130,28 @@ def get_scene_description(scene_type: str) -> str:
         説明文字列
     """
     return SCENE_DESCRIPTIONS.get(scene_type, "練習記録")
+
+
+def is_allowed_channel(channel_name: str) -> bool:
+    """
+    許可されたチャンネルかどうかを判定
+
+    指定されたチャンネル（壁打ち、スクール、試合、フリー練習、振り返り、質問、分析）
+    のみでBotが反応するようにする。
+
+    Args:
+        channel_name: Discordチャンネル名
+
+    Returns:
+        許可されたチャンネルならTrue、それ以外はFalse
+    """
+    # チャンネル名を小文字に変換
+    channel_lower = channel_name.lower()
+
+    # CHANNEL_TO_SCENEに定義されているチャンネル名のいずれかにマッチするかチェック
+    for key in CHANNEL_TO_SCENE.keys():
+        if key in channel_name or key in channel_lower:
+            return True
+
+    # どのチャンネルにもマッチしない場合はFalse
+    return False
