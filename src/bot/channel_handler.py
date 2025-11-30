@@ -1,7 +1,19 @@
 """
-Channel handler for detecting scenes from Discord channel names.
+Channel handler for detecting scenes from Discord channel names (REFACTORED).
+
+Uses centralized constants and returns type-safe SceneInfo objects.
 """
 from typing import Optional
+
+from src.constants import (
+    SceneType,
+    CHANNEL_TO_SCENE,
+    SCENE_EMOJIS,
+    SCENE_DISPLAY_NAMES,
+    SCENE_DESCRIPTIONS,
+    DEFAULT_SCENE_NAME,
+)
+from src.models.scene_data import SceneInfo
 
 
 def detect_scene_from_channel(channel_name: str) -> tuple[str, str]:
@@ -19,38 +31,33 @@ def detect_scene_from_channel(channel_name: str) -> tuple[str, str]:
     # チャンネル名を小文字に変換して判定
     channel_lower = channel_name.lower()
 
-    # チャンネル名のマッピング
-    channel_mapping = {
-        "壁打ち": ("wall_practice", "壁打ち"),
-        "wall": ("wall_practice", "壁打ち"),
-        "wall-practice": ("wall_practice", "壁打ち"),
-        "スクール": ("school", "スクール"),
-        "school": ("school", "スクール"),
-        "lesson": ("school", "スクール"),
-        "試合": ("match", "試合"),
-        "match": ("match", "試合"),
-        "game": ("match", "試合"),
-        "フリー練習": ("free_practice", "フリー練習"),
-        "free": ("free_practice", "フリー練習"),
-        "free-practice": ("free_practice", "フリー練習"),
-        "振り返り": ("reflection", "振り返り"),
-        "reflection": ("reflection", "振り返り"),
-        "review": ("reflection", "振り返り"),
-        "質問": ("question", "質問"),
-        "question": ("question", "質問"),
-        "qa": ("question", "質問"),
-        "分析": ("analysis", "分析"),
-        "analysis": ("analysis", "分析"),
-        "analytics": ("analysis", "分析"),
-    }
-
-    # 完全一致を試す
-    for key, value in channel_mapping.items():
+    # チャンネル名のマッピング（constants から取得）
+    for key, value in CHANNEL_TO_SCENE.items():
         if key in channel_name or key in channel_lower:
             return value
 
     # デフォルト: フリー練習として扱う
-    return ("free_practice", "その他")
+    return (SceneType.FREE_PRACTICE, DEFAULT_SCENE_NAME)
+
+
+def get_scene_info(channel_name: str) -> SceneInfo:
+    """
+    チャンネル名からSceneInfoオブジェクトを取得
+
+    Args:
+        channel_name: Discordチャンネル名
+
+    Returns:
+        SceneInfo object with type, name, emoji, and description
+    """
+    scene_type, scene_name = detect_scene_from_channel(channel_name)
+
+    return SceneInfo(
+        type=scene_type,
+        name=scene_name,
+        emoji=SCENE_EMOJIS.get(scene_type, "🎾"),
+        description=SCENE_DESCRIPTIONS.get(scene_type, "練習記録"),
+    )
 
 
 def is_reflection_channel(channel_name: str) -> bool:
@@ -64,7 +71,7 @@ def is_reflection_channel(channel_name: str) -> bool:
         振り返りチャンネルならTrue
     """
     scene_type, _ = detect_scene_from_channel(channel_name)
-    return scene_type == "reflection"
+    return scene_type == SceneType.REFLECTION
 
 
 def is_question_channel(channel_name: str) -> bool:
@@ -78,7 +85,7 @@ def is_question_channel(channel_name: str) -> bool:
         質問チャンネルならTrue
     """
     scene_type, _ = detect_scene_from_channel(channel_name)
-    return scene_type == "question"
+    return scene_type == SceneType.QUESTION
 
 
 def is_analysis_channel(channel_name: str) -> bool:
@@ -92,12 +99,14 @@ def is_analysis_channel(channel_name: str) -> bool:
         分析チャンネルならTrue
     """
     scene_type, _ = detect_scene_from_channel(channel_name)
-    return scene_type == "analysis"
+    return scene_type == SceneType.ANALYSIS
 
 
 def get_scene_emoji(scene_type: str) -> str:
     """
     シーンタイプに対応する絵文字を取得
+
+    DEPRECATED: Use SceneInfo.emoji or SCENE_EMOJIS[scene_type] instead.
 
     Args:
         scene_type: シーンタイプ
@@ -105,21 +114,14 @@ def get_scene_emoji(scene_type: str) -> str:
     Returns:
         絵文字文字列
     """
-    emoji_mapping = {
-        "wall_practice": "🧱",
-        "school": "🎓",
-        "match": "🏆",
-        "free_practice": "🎾",
-        "reflection": "📝",
-        "question": "❓",
-        "analysis": "📊",
-    }
-    return emoji_mapping.get(scene_type, "🎾")
+    return SCENE_EMOJIS.get(scene_type, "🎾")
 
 
 def get_scene_description(scene_type: str) -> str:
     """
     シーンタイプの説明を取得
+
+    DEPRECATED: Use SceneInfo.description or SCENE_DESCRIPTIONS[scene_type] instead.
 
     Args:
         scene_type: シーンタイプ
@@ -127,12 +129,4 @@ def get_scene_description(scene_type: str) -> str:
     Returns:
         説明文字列
     """
-    description_mapping = {
-        "wall_practice": "基礎練習・反復ドリル",
-        "school": "コーチの指導あり",
-        "match": "実戦・練習試合",
-        "free_practice": "友人との自由練習",
-        "reflection": "後日の追記・補足",
-        "question": "過去の記録を検索して質問に回答",
-    }
-    return description_mapping.get(scene_type, "練習記録")
+    return SCENE_DESCRIPTIONS.get(scene_type, "練習記録")
