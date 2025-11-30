@@ -1,0 +1,17 @@
+# Ignore customized files (users should copy templates)
+CLAUDE.md
+docs/plan.md
+docs/session-log.md
+
+# Keep only templates
+!*.template
+
+# macOS
+.DS_Store
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
