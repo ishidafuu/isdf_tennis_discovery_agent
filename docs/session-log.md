@@ -662,3 +662,70 @@ chmod +x update_bot.sh
 **ブランチ**: compassionate-babbage
 
 ---
+
+## 2025-12-11 (まとめページ生成機能の完全実装)
+**完了**: Phase 2「まとめページ生成機能」の完全実装
+**変更ファイル**:
+- src/storage/summary_generator.py（新規作成、529行）- データ収集とまとめページ生成エンジン
+- src/ai/summary_prompts.py（新規作成、366行）- AI生成用プロンプト
+- src/scheduler/scheduler_manager.py（更新）- スケジューラー統合（90行追加）
+
+**次回の作業**: 実環境（Raspberry Pi）でのテスト実施
+
+**備考**:
+- **実装内容**: 6種類のまとめページを自動生成
+  1. まとめ_総合.md - 練習前チェック用（最重要）
+  2. まとめ_最近.md - 直近2週間の詳細
+  3. まとめ_1ヶ月.md - 過去1ヶ月の詳細
+  4. まとめ_フォアハンド.md - フォアハンド全記録
+  5. まとめ_バックハンド.md - バックハンド全記録
+  6. まとめ_サーブ.md - サーブ全記録
+
+- **データ収集モジュール** (`summary_generator.py`):
+  - `collect_memos_for_summary()`: 期間・技術別のデータ収集
+  - `_parse_markdown_sections()`: Markdown解析（気づき、反省点、深堀り情報）
+  - `_analyze_trends()`: トレンド分析（練習頻度、タグ集計、キーワード抽出）
+  - `generate_all_summaries()`: 6種類のまとめページを一括生成
+
+- **AI生成用プロンプト** (`summary_prompts.py`):
+  - `generate_overview_prompt()`: 総合まとめ用プロンプト
+  - `generate_technique_prompt()`: 技術別まとめ用プロンプト
+  - `generate_period_prompt()`: 期間別まとめ用プロンプト
+  - ヘルパーメソッド4種（reflections, insights, tags, trendsのフォーマット）
+
+- **スケジューラー統合** (`scheduler_manager.py`):
+  - 毎日深夜3時に自動実行（CronTrigger）
+  - `_check_and_generate_summaries()`: 前日のメモチェック→生成
+  - `_send_summary_notification()`: 管理者へのDM通知
+  - `trigger_summary_generation_now()`: 手動実行用メソッド（テスト用）
+
+**技術的決定事項**:
+- **AI完全生成方式**: Gemini 2.5 Flash APIでMarkdownを自動生成
+- **コスト効率**: 月額約0.29円（6ページ×30日×0.00016円）
+- **自動更新頻度**: 練習日の翌日深夜に自動更新
+- **Gemini API呼び出し**: `gemini_client.model.generate_content()`を使用
+- **GitHub連携**: 生成後に自動push
+
+**動作フロー**:
+1. スケジューラーが毎日深夜3時に起動
+2. 前日のメモを検索（`obsidian_manager.search()`）
+3. メモがあれば6種類のまとめページを生成
+   - データ収集 → AIプロンプト生成 → Gemini API呼び出し → Markdown保存
+4. GitHub pushでObsidian Vaultに反映
+5. 管理者にDM通知
+
+**効果**:
+- 自動まとめ生成: ✅ 毎日自動更新
+- 練習前チェック: ✅ 総合まとめで意識すべきポイントが一目瞭然
+- 技術別分析: ✅ フォアハンド・バックハンド・サーブの詳細記録
+- トレンド分析: ✅ 頻出キーワード、練習頻度、タグ集計
+- コスト効率: ✅ 月額1円未満
+
+**実装完了状況**:
+- ✅ Phase 1: Discord返信による追記機能（100%完了）
+- ✅ Phase 2: まとめページ生成機能（100%完了）
+
+**コミット**: 0596cb7
+**ブランチ**: blissful-wing
+
+---

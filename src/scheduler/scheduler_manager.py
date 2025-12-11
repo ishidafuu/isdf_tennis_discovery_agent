@@ -58,11 +58,22 @@ class SchedulerManager:
             replace_existing=True
         )
 
+        # Add summary generation job
+        # Runs every day at 3:00 AM
+        self.scheduler.add_job(
+            self._check_and_generate_summaries,
+            trigger=CronTrigger(hour=3, minute=0),
+            id='summary_generation',
+            name='Summary Page Generation',
+            replace_existing=True
+        )
+
         # Start scheduler
         self.scheduler.start()
         print("📅 Scheduler started")
         print("   - Weekly review: Sundays at 21:00")
         print("   - Inactive check: Daily at 20:00")
+        print("   - Summary generation: Daily at 3:00 AM")
 
     def stop(self):
         """Stop the scheduler."""
@@ -151,3 +162,94 @@ class SchedulerManager:
             replace_existing=True
         )
         print("📅 Inactive check triggered manually")
+
+    async def _check_and_generate_summaries(self):
+        """
+        Check if memos were added yesterday and generate summary pages.
+
+        Scheduled task that runs daily at 3:00 AM.
+        """
+        try:
+            from datetime import timedelta
+            from src.storage.summary_generator import SummaryGenerator
+
+            print(f"📊 Checking for summary page generation at {datetime.now()}")
+
+            # Check if memos were added yesterday
+            yesterday = datetime.now() - timedelta(days=1)
+            yesterday_str = yesterday.strftime('%Y-%m-%d')
+
+            # Search for memos from yesterday
+            memos = self.bot.obsidian_manager.search(
+                filters={'date_range': (yesterday, datetime.now())},
+                limit=None
+            )
+
+            if len(memos) > 0:
+                print(f"  前日（{yesterday_str}）にメモが{len(memos)}件追加されました。まとめページを更新します。")
+
+                # Generate summary pages
+                summary_generator = SummaryGenerator(
+                    self.bot.obsidian_manager,
+                    self.bot.gemini_client,
+                    self.bot.github_sync
+                )
+
+                success = await summary_generator.generate_all_summaries()
+
+                if success and self.bot:
+                    await self._send_summary_notification(len(memos))
+
+            else:
+                print(f"  前日（{yesterday_str}）にメモの追加なし。まとめページ更新をスキップ。")
+
+        except Exception as e:
+            print(f"❌ Error generating summary pages: {e}")
+            if self.debug:
+                import traceback
+                traceback.print_exc()
+
+    async def _send_summary_notification(self, memo_count: int):
+        """
+        Send notification about generated summaries to admin.
+
+        Args:
+            memo_count: Number of memos added yesterday
+        """
+        try:
+            admin_user_id = os.getenv("ADMIN_USER_ID")
+            if not admin_user_id or not self.bot:
+                return
+
+            admin_user_id = int(admin_user_id)
+            admin_user = await self.bot.fetch_user(admin_user_id)
+            dm_channel = await admin_user.create_dm()
+
+            # Send notification
+            await dm_channel.send(
+                f"📊 **まとめページを更新しました**\n\n"
+                f"前日の練習記録（{memo_count}件）を反映して、6種類のまとめページを更新しました。\n\n"
+                f"更新されたページ:\n"
+                f"- まとめ_総合.md\n"
+                f"- まとめ_最近.md\n"
+                f"- まとめ_1ヶ月.md\n"
+                f"- まとめ_フォアハンド.md\n"
+                f"- まとめ_バックハンド.md\n"
+                f"- まとめ_サーブ.md"
+            )
+
+            print(f"✅ Summary notification sent to admin")
+
+        except Exception as e:
+            print(f"⚠️ Failed to send summary notification: {e}")
+
+    def trigger_summary_generation_now(self):
+        """Trigger summary generation immediately (for testing)."""
+        self.scheduler.add_job(
+            self._check_and_generate_summaries,
+            trigger='date',
+            id='manual_summary_generation',
+            name='Manual Summary Generation',
+            replace_existing=True
+        )
+        print("📊 Summary generation triggered manually")
