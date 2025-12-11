@@ -25,17 +25,26 @@
 ## 重要なコマンド
 
 ```bash
-# 開発環境
+# 開発環境（Mac）
 source venv/bin/activate
 python main.py
 
 # セットアップ確認
 python check_setup.py
 
+# dotenvx関連（Mac）
+dotenvx encrypt -f .env                 # 環境変数を暗号化
+dotenvx get VARIABLE_NAME               # 環境変数を確認
+dotenvx run -- python main.py           # 復号化して実行
+
+# デプロイ（Mac → Raspberry Pi）
+pi-deploy-tennis-bot                    # デプロイスクリプト実行
+
 # サービス管理（Raspberry Pi本番環境）
-sudo systemctl start tennis-bot
-sudo systemctl status tennis-bot
-sudo journalctl -u tennis-bot -f
+sudo systemctl start tennis-bot         # サービス起動
+sudo systemctl status tennis-bot        # ステータス確認
+sudo systemctl restart tennis-bot       # 再起動
+sudo journalctl -u tennis-bot -f        # ログをリアルタイム表示
 
 # GitHub同期
 cd ~/obsidian-vault
@@ -146,6 +155,13 @@ git push origin main
 ### 2025-11-28
 - **プロジェクト管理構造の導入**: CLAUDE.md、docs/plan.md、docs/session-log.md、カスタムコマンド（/start, /status）を追加し、大規模プロジェクトの管理効率を向上
 
+### 2025-12-11
+- **dotenvx導入**: 環境変数の暗号化管理を実装。`.env`を暗号化してGitにコミット可能に
+- **デプロイメント構造**: `deployment/scripts/`にラズパイセットアップとデプロイスクリプトを追加
+- **systemdサービステンプレート**: dotenvxと統合したサービスファイルを`deployment/systemd/`に配置
+- **ドキュメント整備**: `docs/DOTENVX_SETUP.md`、`docs/QUICKSTART_DOTENVX.md`を追加
+- **.gitignore更新**: `.env.keys`を除外リストに追加してセキュリティ強化
+
 ---
 
 ## 技術的制約・既知の問題
@@ -169,10 +185,15 @@ git push origin main
 
 ## セキュリティ注意事項
 
-- **`.env` ファイル**を絶対にGitにコミットしない（`.gitignore`で除外）
-- **Discord Bot Token**、**Gemini API Key**は `.env` のみで管理
+### dotenvx導入後の環境変数管理
+
+- **暗号化された `.env`** をGitにコミット（平文の.envはコミット禁止）
+- **`.env.keys` ファイル**を絶対にGitにコミットしない（`.gitignore`で除外済み）
+- **`.env.keys`のパーミッション**を`600`に設定（所有者のみ読み書き可能）
+- **Discord Bot Token**、**Gemini API Key**、**GitHub Token**は暗号化された`.env`で管理
 - **プライベートリポジトリ**で運用（練習内容は個人情報）
 - **Obsidian Vault**の GitHub リポジトリもプライベート推奨
+- **鍵のローテーション**: 年1回程度、新しい鍵で再暗号化を推奨
 
 ---
 
@@ -183,3 +204,5 @@ git push origin main
 - **クイックスタート**: `docs/improvements/QUICKSTART.md`
 - **セットアップガイド**: `SETUP.md`
 - **プロジェクト管理ガイド**: このファイル（CLAUDE.md）の「自律行動ルール」セクション
+- **dotenvxクイックスタート**: `docs/QUICKSTART_DOTENVX.md`
+- **dotenvx詳細ガイド**: `docs/DOTENVX_SETUP.md`

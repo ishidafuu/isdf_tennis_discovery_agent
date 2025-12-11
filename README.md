@@ -27,6 +27,8 @@ Discord + Gemini AI + Obsidianを連携し、音声メモから構造化され�
 
 ### 1. セットアップ
 
+#### 開発環境（Mac/Linux）
+
 ```bash
 # リポジトリをクローン（既に完了している場合はスキップ）
 git clone https://github.com/ishidafuu/isdf_tennis_discovery_agent.git
@@ -45,9 +47,25 @@ pip install -r requirements.txt
 python check_setup.py
 ```
 
+#### Raspberry Pi本番環境（dotenvx使用）
+
+dotenvxを使用することで、環境変数を暗号化してGitに安全にコミット可能です。
+
+```bash
+# dotenvxクイックスタート
+# Mac側: 環境変数を暗号化
+npm install -g @dotenvx/dotenvx
+dotenvx encrypt -f .env
+
+# Raspberry Pi側: 自動セットアップ
+bash deployment/scripts/setup-raspberry-pi.sh
+```
+
 詳細ガイド：
 - **全体の流れ**: [SETUP.md](./SETUP.md)
 - **Discord Bot作成**: [docs/DISCORD_SETUP.md](./docs/DISCORD_SETUP.md)
+- **dotenvxクイックスタート**: [docs/QUICKSTART_DOTENVX.md](./docs/QUICKSTART_DOTENVX.md) 🔐
+- **dotenvx詳細ガイド**: [docs/DOTENVX_SETUP.md](./docs/DOTENVX_SETUP.md)
 
 ### 2. 実行
 
@@ -192,9 +210,16 @@ isdf_tennis_discovery_agent/
 
 ## 🛡️ セキュリティ
 
-- `.env`ファイルは**絶対にGitにコミットしない**
-- APIキーは`.env`ファイルにのみ保存
+### dotenvx導入後の環境変数管理
+
+- **暗号化された`.env`**をGitにコミット（平文の`.env`はコミット禁止）
+- **`.env.keys`（暗号化鍵）**は絶対にGitにコミットしない（`.gitignore`で除外済み）
+- `.env.keys`のパーミッションを`600`に設定（所有者のみ読み書き可能）
+- APIキー（Discord Bot Token、Gemini API Key、GitHub Token）は暗号化された`.env`で管理
 - プライベートリポジトリで管理
+- 年1回程度、鍵をローテーション推奨
+
+詳細は [docs/QUICKSTART_DOTENVX.md](./docs/QUICKSTART_DOTENVX.md) を参照してください。
 
 ## 📄 ライセンス
 
