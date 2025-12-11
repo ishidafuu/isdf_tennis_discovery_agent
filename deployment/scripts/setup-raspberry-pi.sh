@@ -108,7 +108,18 @@ fi
 
 # 9. systemdサービスファイルをインストール
 echo "⚙️  Installing systemd service..."
-sudo cp deployment/systemd/tennis-bot.service /etc/systemd/system/tennis-bot.service
+# ユーザー名とホームディレクトリを自動検出
+CURRENT_USER=$(whoami)
+CURRENT_HOME=$(eval echo ~$CURRENT_USER)
+
+# テンプレートファイルのプレースホルダーを実際の値に置換
+sed -e "s|USER_NAME|$CURRENT_USER|g" \
+    -e "s|HOME_DIR|$CURRENT_HOME|g" \
+    deployment/systemd/tennis-bot.service > /tmp/tennis-bot.service
+
+# 置換後のファイルをsystemdディレクトリにコピー
+sudo mv /tmp/tennis-bot.service /etc/systemd/system/tennis-bot.service
+
 sudo systemctl daemon-reload
 sudo systemctl enable tennis-bot
 

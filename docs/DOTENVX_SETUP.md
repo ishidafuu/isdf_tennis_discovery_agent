@@ -96,13 +96,27 @@ chmod 600 .env.keys  # 所有者のみ読み書き可能に
 
 #### 3.1 サービステンプレートを配置
 
+**自動セットアップスクリプトを使用した場合**（推奨）:
+- セットアップスクリプトが自動的にユーザー名とホームディレクトリを置換してインストールします
+- この場合、手動での編集は不要です
+
+**手動でインストールする場合**:
 ```bash
 # ラズパイ側で実行
-sudo cp ~/isdf_tennis_discovery_agent/deployment/systemd/tennis-bot.service.template \
-        /etc/systemd/system/tennis-bot.service
+# ユーザー名とホームディレクトリを自動検出
+CURRENT_USER=$(whoami)
+CURRENT_HOME=$(eval echo ~$CURRENT_USER)
 
-# サービスファイルを編集（必要に応じて）
+# プレースホルダーを実際の値に置換してコピー
+sed -e "s|USER_NAME|$CURRENT_USER|g" \
+    -e "s|HOME_DIR|$CURRENT_HOME|g" \
+    ~/isdf_tennis_discovery_agent/deployment/systemd/tennis-bot.service \
+    | sudo tee /etc/systemd/system/tennis-bot.service > /dev/null
+
+# または手動で編集
 sudo nano /etc/systemd/system/tennis-bot.service
+# USER_NAME を実際のユーザー名に置換
+# HOME_DIR を実際のホームディレクトリ（例: /home/ishidafuu）に置換
 ```
 
 #### 3.2 サービスを有効化＆起動
@@ -222,6 +236,33 @@ sudo systemd-analyze verify /etc/systemd/system/tennis-bot.service
 # 手動で起動してエラーを確認
 cd ~/isdf_tennis_discovery_agent
 dotenvx run -- python3 main.py
+```
+
+### ユーザー名エラー（status=217/USER）
+
+**症状**: `Failed to determine user credentials: No such process`
+
+これはサービスファイルで指定されたユーザー名が実際のユーザー名と異なる場合に発生します。
+
+```bash
+# 現在のユーザー名を確認
+whoami
+# 例: ishidafuu
+
+# サービスファイルを修正
+sudo nano /etc/systemd/system/tennis-bot.service
+
+# User=USER_NAME の USER_NAME を実際のユーザー名に変更
+# WorkingDirectory と ExecStart のパスも修正
+# 例:
+#   User=ishidafuu
+#   WorkingDirectory=/home/ishidafuu/isdf_tennis_discovery_agent
+#   ExecStart=/usr/local/bin/dotenvx run -- /home/ishidafuu/isdf_tennis_discovery_agent/venv/bin/python main.py
+
+# 保存後、再読み込みして再起動
+sudo systemctl daemon-reload
+sudo systemctl restart tennis-bot
+sudo systemctl status tennis-bot
 ```
 
 ### dotenvxが見つからないエラー
