@@ -4,6 +4,31 @@
 
 ---
 
+## 2025-12-11 (dotenvx導入)
+**完了**: dotenvx環境変数暗号化管理の導入
+**変更ファイル**:
+- `.gitignore` (.env.keysを除外)
+- `docs/DOTENVX_SETUP.md` (詳細セットアップガイド)
+- `docs/QUICKSTART_DOTENVX.md` (クイックスタートガイド)
+- `deployment/scripts/setup-raspberry-pi.sh` (ラズパイ自動セットアップ)
+- `deployment/scripts/pi-deploy-tennis-bot.sh` (Mac側デプロイスクリプト)
+- `deployment/systemd/tennis-bot.service` (dotenvx統合systemdサービス)
+- `CLAUDE.md` (最近の変更、セキュリティ注意事項、参考ドキュメント、重要なコマンドを更新)
+- `README.md` (セットアップとセキュリティセクションを更新)
+
+**次回の作業**:
+- 実際に.envファイルを暗号化してGitにコミット
+- ラズパイでセットアップスクリプトを実行してテスト
+
+**備考**:
+- dotenvxを使用して環境変数を暗号化管理する構成を構築
+- Mac開発環境とRaspberry Pi本番環境の両方で同じ暗号化された.envを共有可能に
+- デプロイスクリプトでコミット→プッシュ→ラズパイでプル→再起動を自動化
+- systemdサービスでdotenvx runを使用し、起動時に自動復号化
+- セキュリティ: .env.keysを.gitignoreに追加、鍵は別途scpでコピー
+
+---
+
 ## 2025-11-28 16:17 (セットアップ)
 **完了**: プロジェクト管理構造のセットアップ
 **変更ファイル**:

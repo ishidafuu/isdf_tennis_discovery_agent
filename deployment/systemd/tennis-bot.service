@@ -1,0 +1,24 @@
+[Unit]
+Description=Tennis Discovery Agent - Discord Bot
+After=network.target
+Documentation=https://github.com/ishidafuu/isdf_tennis_discovery_agent
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/isdf_tennis_discovery_agent
+ExecStart=/usr/local/bin/dotenvx run -- /home/pi/isdf_tennis_discovery_agent/venv/bin/python main.py
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+# セキュリティ設定
+NoNewPrivileges=true
+PrivateTmp=true
+
+# 環境変数（必要に応じて追加）
+Environment="PYTHONUNBUFFERED=1"
+
+[Install]
+WantedBy=multi-user.target
