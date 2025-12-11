@@ -1,12 +1,12 @@
 # Tennis Discovery Agent - 実装計画
 
-最終更新: 2025-11-28
+最終更新: 2025-12-11
 
 ---
 
 ## Phase 1: 記録の構造化（基礎機能）
 
-**全体進捗: 20/20 タスク完了 (100%)** ✅
+**全体進捗: 32/32 タスク完了 (100%)** ✅
 
 ### 1.1 基礎機能
 - [x] チャンネル分け機能（#壁打ち、#スクール、#試合、#フリー練習、#振り返り）
@@ -46,6 +46,25 @@
 - [x] Phase 1全機能の統合テスト
 - [x] 週次レビュー自動生成機能
 - [x] 練習開始時リマインド機能
+
+### 1.8 Discord返信による追記機能
+- [x] AI解析・整形機能（`src/ai/deepening_analysis.py`）
+- [x] 返信ハンドラー（`src/bot/handlers/reply_handler.py`）
+- [x] MessageID記録機能（全メモにdiscord_message_idを記録）
+- [x] ObsidianManager拡張（`find_memo_by_discord_id()`, `update_memo_frontmatter()`）
+- [x] client.py統合（返信検知の優先処理）
+
+### 1.9 まとめページ自動生成機能
+- [x] データ収集モジュール（`src/storage/summary_generator.py`）
+- [x] AI生成用プロンプト（`src/ai/summary_prompts.py`）
+- [x] スケジューラー統合（毎日深夜3時に自動実行）
+- [x] 6種類のまとめページ生成
+  - [x] まとめ_総合.md（練習前チェック用）
+  - [x] まとめ_最近.md（直近2週間）
+  - [x] まとめ_1ヶ月.md（過去1ヶ月）
+  - [x] まとめ_フォアハンド.md（フォアハンド全記録）
+  - [x] まとめ_バックハンド.md（バックハンド全記録）
+  - [x] まとめ_サーブ.md（サーブ全記録）
 
 ---
 
