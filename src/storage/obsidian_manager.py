@@ -477,3 +477,89 @@ class ObsidianManager:
         except Exception as e:
             print(f"Error appending to memo: {e}")
             return False
+
+    def find_memo_by_discord_id(self, message_id: int) -> Optional[str]:
+        """
+        Find memo file by Discord message ID.
+
+        Args:
+            message_id: Discord message ID
+
+        Returns:
+            Path to memo file, or None if not found
+        """
+        try:
+            # Search all markdown files in vault
+            for memo_path in self.vault_path.glob("**/*.md"):
+                # Skip hidden files and directories
+                if any(part.startswith('.') for part in memo_path.parts):
+                    continue
+
+                # Read frontmatter
+                with open(memo_path, 'r', encoding='utf-8') as f:
+                    content = f.read()
+
+                # Parse YAML frontmatter
+                if content.startswith('---'):
+                    parts = content.split('---', 2)
+                    if len(parts) >= 3:
+                        try:
+                            frontmatter = yaml.safe_load(parts[1])
+                            if isinstance(frontmatter, dict):
+                                stored_id = frontmatter.get('discord_message_id')
+                                if stored_id == message_id or stored_id == str(message_id):
+                                    return str(memo_path)
+                        except yaml.YAMLError:
+                            continue
+
+            return None
+
+        except Exception as e:
+            print(f"Error finding memo by discord_id: {e}")
+            return None
+
+    def update_memo_frontmatter(self, file_path: str, metadata: dict) -> bool:
+        """
+        Update YAML frontmatter of a memo file.
+
+        Args:
+            file_path: Path to memo file
+            metadata: Metadata to add/update
+
+        Returns:
+            True if successful, False otherwise
+        """
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+
+            # Parse existing frontmatter
+            if content.startswith('---'):
+                parts = content.split('---', 2)
+                if len(parts) >= 3:
+                    frontmatter = yaml.safe_load(parts[1])
+                    if not isinstance(frontmatter, dict):
+                        frontmatter = {}
+                    body = parts[2]
+                else:
+                    frontmatter = {}
+                    body = content
+            else:
+                frontmatter = {}
+                body = content
+
+            # Update metadata
+            frontmatter.update(metadata)
+
+            # Rebuild file
+            new_frontmatter = yaml.dump(frontmatter, allow_unicode=True, sort_keys=False)
+            new_content = f"---\n{new_frontmatter}---{body}"
+
+            with open(file_path, 'w', encoding='utf-8') as f:
+                f.write(new_content)
+
+            return True
+
+        except Exception as e:
+            print(f"Error updating frontmatter: {e}")
+            return False

@@ -27,6 +27,7 @@ from src.bot.handlers.message_handler import (
     process_video_message,
 )
 from src.bot.handlers.dm_handler import process_pending_dms
+from src.bot.handlers.reply_handler import handle_reply_to_memo
 
 # Load environment variables
 load_dotenv()
@@ -76,6 +77,11 @@ class TennisDiscoveryBot(commands.Bot):
         """
         # Ignore messages from the bot itself
         if message.author == self.user:
+            return
+
+        # Check if this is a reply to another message
+        if message.reference:
+            await handle_reply_to_memo(self, message)
             return
 
         # Check if the message is from an allowed channel

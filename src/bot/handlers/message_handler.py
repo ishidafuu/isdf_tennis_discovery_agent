@@ -96,13 +96,24 @@ async def process_voice_message(
             tmp_path = None
 
         # Send result embed
-        await send_session_embed(
+        sent_message = await send_session_embed(
             thinking_msg=thinking_msg,
             session=session,
             scene_info=scene_info,
             file_url=file_url,
             bot=bot,
         )
+
+        # Record Discord message ID to memo
+        memo_filename = bot.markdown_builder.get_filename_for_session(session, scene_info.name)
+        memo_path = bot.obsidian_manager.vault_path / memo_filename
+        bot.obsidian_manager.update_memo_frontmatter(str(memo_path), {
+            'discord_message_id': sent_message.id,
+            'discord_channel_id': message.channel.id
+        })
+
+        # Re-push to GitHub
+        bot.github_sync.push_to_github()
 
         # Generate and send follow-up question
         if session.success_patterns or session.failure_patterns:
@@ -173,7 +184,7 @@ async def process_text_message(
             ]
 
         # Send result embed
-        await send_session_embed(
+        sent_message = await send_session_embed(
             thinking_msg=thinking_msg,
             session=session,
             scene_info=scene_info,
@@ -181,6 +192,17 @@ async def process_text_message(
             bot=bot,
             extra_fields=extra_fields,
         )
+
+        # Record Discord message ID to memo
+        memo_filename = bot.markdown_builder.get_filename_for_session(session, scene_info.name)
+        memo_path = bot.obsidian_manager.vault_path / memo_filename
+        bot.obsidian_manager.update_memo_frontmatter(str(memo_path), {
+            'discord_message_id': sent_message.id,
+            'discord_channel_id': message.channel.id
+        })
+
+        # Re-push to GitHub
+        bot.github_sync.push_to_github()
 
     except Exception as e:
         await handle_message_error(message, e, bot.debug, "text message processing")
@@ -275,7 +297,18 @@ async def process_image_message(
             file_url=file_url,
         )
 
-        await thinking_msg.edit(content=None, embed=embed)
+        sent_message = await thinking_msg.edit(content=None, embed=embed)
+
+        # Record Discord message ID to memo
+        memo_filename = bot.markdown_builder.get_filename_for_session(session, scene_info.name)
+        memo_path = bot.obsidian_manager.vault_path / memo_filename
+        bot.obsidian_manager.update_memo_frontmatter(str(memo_path), {
+            'discord_message_id': sent_message.id,
+            'discord_channel_id': message.channel.id
+        })
+
+        # Re-push to GitHub
+        bot.github_sync.push_to_github()
 
     except Exception as e:
         await handle_message_error(message, e, bot.debug, "image message processing")
@@ -370,7 +403,18 @@ async def process_video_message(
             file_url=file_url,
         )
 
-        await thinking_msg.edit(content=None, embed=embed)
+        sent_message = await thinking_msg.edit(content=None, embed=embed)
+
+        # Record Discord message ID to memo
+        memo_filename = bot.markdown_builder.get_filename_for_session(session, scene_info.name)
+        memo_path = bot.obsidian_manager.vault_path / memo_filename
+        bot.obsidian_manager.update_memo_frontmatter(str(memo_path), {
+            'discord_message_id': sent_message.id,
+            'discord_channel_id': message.channel.id
+        })
+
+        # Re-push to GitHub
+        bot.github_sync.push_to_github()
 
     except Exception as e:
         await handle_message_error(message, e, bot.debug, "video message processing")
