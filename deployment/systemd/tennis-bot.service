@@ -5,9 +5,11 @@ Documentation=https://github.com/ishidafuu/isdf_tennis_discovery_agent
 
 [Service]
 Type=simple
-User=pi
-WorkingDirectory=/home/pi/isdf_tennis_discovery_agent
-ExecStart=/usr/local/bin/dotenvx run -- /home/pi/isdf_tennis_discovery_agent/venv/bin/python main.py
+# NOTE: 以下の USER_NAME と HOME_DIR はセットアップスクリプトで自動置換されます
+# 手動で設置する場合は、実際のユーザー名とホームディレクトリに置き換えてください
+User=USER_NAME
+WorkingDirectory=HOME_DIR/isdf_tennis_discovery_agent
+ExecStart=/usr/local/bin/dotenvx run -- HOME_DIR/isdf_tennis_discovery_agent/venv/bin/python main.py
 Restart=always
 RestartSec=10
 StandardOutput=journal

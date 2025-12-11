@@ -109,7 +109,7 @@ bash deployment/scripts/setup-raspberry-pi.sh
 - Node.js、dotenvxのインストール
 - Python仮想環境の作成
 - 依存関係のインストール
-- systemdサービスの登録
+- systemdサービスの登録（ユーザー名とホームディレクトリを自動検出）
 
 ### 2.3 .env.keysファイルを配置
 
@@ -216,6 +216,33 @@ sudo journalctl -u tennis-bot -n 50
 cd ~/isdf_tennis_discovery_agent
 source venv/bin/activate
 dotenvx run -- python main.py
+```
+
+### ユーザー名エラー（status=217/USER）
+
+**症状**: ログに`Failed to determine user credentials: No such process`と表示される
+
+**原因**: systemdサービスファイルのユーザー名が実際のユーザー名と異なる
+
+**対処法**:
+```bash
+# 現在のユーザー名を確認
+whoami
+
+# サービスファイルを修正
+sudo nano /etc/systemd/system/tennis-bot.service
+# User=USER_NAME を実際のユーザー名に変更
+# WorkingDirectory と ExecStart のパスも修正
+
+# 例: ユーザー名が ishidafuu の場合
+#   User=ishidafuu
+#   WorkingDirectory=/home/ishidafuu/isdf_tennis_discovery_agent
+#   ExecStart=/usr/local/bin/dotenvx run -- /home/ishidafuu/isdf_tennis_discovery_agent/venv/bin/python main.py
+
+# 保存後、再起動
+sudo systemctl daemon-reload
+sudo systemctl restart tennis-bot
+sudo systemctl status tennis-bot
 ```
 
 ### .env.keysが見つからない
