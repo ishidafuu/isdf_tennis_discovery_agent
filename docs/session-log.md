@@ -729,3 +729,67 @@ chmod +x update_bot.sh
 **ブランチ**: blissful-wing
 
 ---
+
+## 2025-12-11 (デプロイ準備完了)
+**完了**: Phase 1.8/1.9実装のデプロイ準備
+**変更ファイル**:
+- docs/plan.md（更新）- Phase 1.8/1.9の実装完了を反映
+- check_imports.py（インポート確認実行）
+- requirements.txt（確認済み - 必要な依存関係すべて含まれている）
+
+**次回の作業**: Raspberry Piへのデプロイ実行
+
+**備考**:
+- **実装確認**: 構文チェック・インポートチェックすべて正常
+  - ✅ SummaryGenerator.generate_all_summaries
+  - ✅ SummaryGenerator.collect_memos_for_summary
+  - ✅ SummaryPrompts（overview/technique/period）
+  - ✅ SchedulerManager.trigger_summary_generation_now
+  - ✅ DeepeningAnalysis.analyze_and_format_reply
+  - ✅ ReplyHandler.handle_reply_to_memo
+
+- **Phase 1.8: Discord返信による追記機能**（100%完了）
+  - AI解析・整形機能（`src/ai/deepening_analysis.py`）
+  - 返信ハンドラー（`src/bot/handlers/reply_handler.py`）
+  - MessageID記録機能（全メモにdiscord_message_idを記録）
+  - ObsidianManager拡張（`find_memo_by_discord_id()`, `update_memo_frontmatter()`）
+
+- **Phase 1.9: まとめページ自動生成機能**（100%完了）
+  - データ収集モジュール（`src/storage/summary_generator.py`、529行）
+  - AI生成用プロンプト（`src/ai/summary_prompts.py`、444行）
+  - スケジューラー統合（毎日深夜3時に自動実行）
+  - 6種類のまとめページ生成（総合/最近/1ヶ月/フォアハンド/バックハンド/サーブ）
+
+- **コスト効率**: 月額約0.29円（6ページ×30日×0.00016円）
+
+**デプロイ手順**:
+1. Raspberry Piにログイン
+2. プロジェクトディレクトリに移動: `cd ~/isdf_tennis_discovery_agent`
+3. ブランチをチェックアウト: `git fetch && git checkout claude/review-and-deploy-01MUcqheCVoYatoPZUeXrYTM`
+4. 仮想環境を有効化: `source venv/bin/activate`
+5. 依存関係を更新: `pip install -r requirements.txt`
+6. サービスを再起動: `sudo systemctl restart tennis-bot`
+7. ログで動作確認: `sudo journalctl -u tennis-bot -f`
+
+**または自動更新スクリプト使用**:
+```bash
+./update_bot.sh
+```
+
+**技術的決定事項**:
+- すべての依存関係は既存のrequirements.txtでカバー済み
+- Gemini 2.5 Flash API使用（無料枠で十分）
+- スケジューラーはAPSchedulerで実装済み
+- GitHub自動push機能統合済み
+
+**効果**:
+- Discord返信による自然な追記フロー: ✅
+- 自動まとめ生成: ✅ 毎日深夜3時に自動実行
+- 練習前チェック: ✅ 総合まとめで意識すべきポイント一目瞭然
+- コスト効率: ✅ 月額1円未満
+
+**コミット**: 4b6597b
+**ブランチ**: claude/review-and-deploy-01MUcqheCVoYatoPZUeXrYTM
+**PR URL**: https://github.com/ishidafuu/isdf_tennis_discovery_agent/pull/new/claude/review-and-deploy-01MUcqheCVoYatoPZUeXrYTM
+
+---
