@@ -256,19 +256,50 @@ ls -la ~/isdf_tennis_discovery_agent/.env.keys
 scp .env.keys pi@raspberrypi.local:~/isdf_tennis_discovery_agent/
 ```
 
-### dotenvxが見つからない
+### dotenvxが見つからない（status=203/EXEC）
+
+**症状**: ログに`Unable to locate executable '/usr/local/bin/dotenvx'`と表示される
+
+**原因**: dotenvxのインストール場所が/usr/bin/dotenvxなのに、サービスファイルでは/usr/local/bin/dotenvxを指定している
+
+**対処法**: 上記の「ユーザー名エラー」と同じ方法で、dotenvxのパスも含めて修正してください：
 
 ```bash
-# ラズパイ側でパスを確認
+# 実際のパスを確認
 which dotenvx
+# 例: /usr/bin/dotenvx
 
-# /usr/local/bin/dotenvx にない場合
-# サービスファイルのExecStartを修正
-sudo nano /etc/systemd/system/tennis-bot.service
-# ExecStartの/usr/local/bin/dotenvxを実際のパスに変更
+# サービスファイルを自動生成
+CURRENT_USER=$(whoami)
+CURRENT_HOME=$(eval echo ~$CURRENT_USER)
+DOTENVX_PATH=$(which dotenvx)
 
+sudo tee /etc/systemd/system/tennis-bot.service > /dev/null <<EOF
+[Unit]
+Description=Tennis Discovery Agent - Discord Bot
+After=network.target
+
+[Service]
+Type=simple
+User=$CURRENT_USER
+WorkingDirectory=$CURRENT_HOME/isdf_tennis_discovery_agent
+ExecStart=$DOTENVX_PATH run -- $CURRENT_HOME/isdf_tennis_discovery_agent/venv/bin/python main.py
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+NoNewPrivileges=true
+PrivateTmp=true
+Environment="PYTHONUNBUFFERED=1"
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+# 再起動
 sudo systemctl daemon-reload
 sudo systemctl restart tennis-bot
+sudo systemctl status tennis-bot
 ```
 
 ---

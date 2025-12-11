@@ -108,13 +108,20 @@ fi
 
 # 9. systemdサービスファイルをインストール
 echo "⚙️  Installing systemd service..."
-# ユーザー名とホームディレクトリを自動検出
+# ユーザー名、ホームディレクトリ、dotenvxパスを自動検出
 CURRENT_USER=$(whoami)
 CURRENT_HOME=$(eval echo ~$CURRENT_USER)
+DOTENVX_PATH=$(which dotenvx)
+
+echo "Detected configuration:"
+echo "  User: $CURRENT_USER"
+echo "  Home: $CURRENT_HOME"
+echo "  dotenvx: $DOTENVX_PATH"
 
 # テンプレートファイルのプレースホルダーを実際の値に置換
 sed -e "s|USER_NAME|$CURRENT_USER|g" \
     -e "s|HOME_DIR|$CURRENT_HOME|g" \
+    -e "s|DOTENVX_PATH|$DOTENVX_PATH|g" \
     deployment/systemd/tennis-bot.service > /tmp/tennis-bot.service
 
 # 置換後のファイルをsystemdディレクトリにコピー

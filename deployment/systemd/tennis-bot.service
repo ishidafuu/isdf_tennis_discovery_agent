@@ -5,11 +5,14 @@ Documentation=https://github.com/ishidafuu/isdf_tennis_discovery_agent
 
 [Service]
 Type=simple
-# NOTE: 以下の USER_NAME と HOME_DIR はセットアップスクリプトで自動置換されます
-# 手動で設置する場合は、実際のユーザー名とホームディレクトリに置き換えてください
+# NOTE: 以下のプレースホルダーはセットアップスクリプトで自動置換されます
+# 手動で設置する場合は、実際の値に置き換えてください
+#   USER_NAME: 実際のユーザー名 (例: ishidafuu)
+#   HOME_DIR: ホームディレクトリ (例: /home/ishidafuu)
+#   DOTENVX_PATH: dotenvxの実際のパス (例: /usr/bin/dotenvx または /usr/local/bin/dotenvx)
 User=USER_NAME
 WorkingDirectory=HOME_DIR/isdf_tennis_discovery_agent
-ExecStart=/usr/local/bin/dotenvx run -- HOME_DIR/isdf_tennis_discovery_agent/venv/bin/python main.py
+ExecStart=DOTENVX_PATH run -- HOME_DIR/isdf_tennis_discovery_agent/venv/bin/python main.py
 Restart=always
 RestartSec=10
 StandardOutput=journal

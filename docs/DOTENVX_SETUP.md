@@ -103,13 +103,15 @@ chmod 600 .env.keys  # 所有者のみ読み書き可能に
 **手動でインストールする場合**:
 ```bash
 # ラズパイ側で実行
-# ユーザー名とホームディレクトリを自動検出
+# ユーザー名、ホームディレクトリ、dotenvxパスを自動検出
 CURRENT_USER=$(whoami)
 CURRENT_HOME=$(eval echo ~$CURRENT_USER)
+DOTENVX_PATH=$(which dotenvx)
 
 # プレースホルダーを実際の値に置換してコピー
 sed -e "s|USER_NAME|$CURRENT_USER|g" \
     -e "s|HOME_DIR|$CURRENT_HOME|g" \
+    -e "s|DOTENVX_PATH|$DOTENVX_PATH|g" \
     ~/isdf_tennis_discovery_agent/deployment/systemd/tennis-bot.service \
     | sudo tee /etc/systemd/system/tennis-bot.service > /dev/null
 
@@ -117,6 +119,7 @@ sed -e "s|USER_NAME|$CURRENT_USER|g" \
 sudo nano /etc/systemd/system/tennis-bot.service
 # USER_NAME を実際のユーザー名に置換
 # HOME_DIR を実際のホームディレクトリ（例: /home/ishidafuu）に置換
+# DOTENVX_PATH をdotenvxの実際のパス（例: /usr/bin/dotenvx）に置換
 ```
 
 #### 3.2 サービスを有効化＆起動
@@ -265,19 +268,50 @@ sudo systemctl restart tennis-bot
 sudo systemctl status tennis-bot
 ```
 
-### dotenvxが見つからないエラー
+### dotenvxが見つからないエラー（status=203/EXEC）
+
+**症状**: `Unable to locate executable '/usr/local/bin/dotenvx': No such file or directory`
+
+**原因**: サービスファイルで指定されたdotenvxのパスが実際のインストール場所と異なる
 
 ```bash
-# dotenvxのパスを確認
+# dotenvxの実際のパスを確認
 which dotenvx
+# 例: /usr/bin/dotenvx または /usr/local/bin/dotenvx
 
-# パスが /usr/local/bin/dotenvx でない場合
-# サービスファイルのExecStartを修正
-sudo nano /etc/systemd/system/tennis-bot.service
-# ExecStart=/actual/path/to/dotenvx run -- ...
+# サービスファイルを修正
+DOTENVX_PATH=$(which dotenvx)
+CURRENT_USER=$(whoami)
+CURRENT_HOME=$(eval echo ~$CURRENT_USER)
 
+# 正しいパスでサービスファイルを再生成
+sudo tee /etc/systemd/system/tennis-bot.service > /dev/null <<EOF
+[Unit]
+Description=Tennis Discovery Agent - Discord Bot
+After=network.target
+Documentation=https://github.com/ishidafuu/isdf_tennis_discovery_agent
+
+[Service]
+Type=simple
+User=$CURRENT_USER
+WorkingDirectory=$CURRENT_HOME/isdf_tennis_discovery_agent
+ExecStart=$DOTENVX_PATH run -- $CURRENT_HOME/isdf_tennis_discovery_agent/venv/bin/python main.py
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+NoNewPrivileges=true
+PrivateTmp=true
+Environment="PYTHONUNBUFFERED=1"
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+# 再起動
 sudo systemctl daemon-reload
 sudo systemctl restart tennis-bot
+sudo systemctl status tennis-bot
 ```
 
 ### .env.keysが見つからないエラー

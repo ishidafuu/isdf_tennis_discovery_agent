@@ -5,14 +5,14 @@
 ---
 
 ## 2025-12-11 (dotenvx導入)
-**完了**: dotenvx環境変数暗号化管理の導入
+**完了**: dotenvx環境変数暗号化管理の導入 + トラブルシューティング対応
 **変更ファイル**:
 - `.gitignore` (.env.keysを除外)
-- `docs/DOTENVX_SETUP.md` (詳細セットアップガイド)
-- `docs/QUICKSTART_DOTENVX.md` (クイックスタートガイド)
-- `deployment/scripts/setup-raspberry-pi.sh` (ラズパイ自動セットアップ)
+- `docs/DOTENVX_SETUP.md` (詳細セットアップガイド + トラブルシューティング)
+- `docs/QUICKSTART_DOTENVX.md` (クイックスタートガイド + トラブルシューティング)
+- `deployment/scripts/setup-raspberry-pi.sh` (ユーザー名・ホームディレクトリ・dotenvxパス自動検出)
 - `deployment/scripts/pi-deploy-tennis-bot.sh` (Mac側デプロイスクリプト)
-- `deployment/systemd/tennis-bot.service` (dotenvx統合systemdサービス)
+- `deployment/systemd/tennis-bot.service` (プレースホルダー方式に変更: USER_NAME, HOME_DIR, DOTENVX_PATH)
 - `CLAUDE.md` (最近の変更、セキュリティ注意事項、参考ドキュメント、重要なコマンドを更新)
 - `README.md` (セットアップとセキュリティセクションを更新)
 
@@ -26,6 +26,14 @@
 - デプロイスクリプトでコミット→プッシュ→ラズパイでプル→再起動を自動化
 - systemdサービスでdotenvx runを使用し、起動時に自動復号化
 - セキュリティ: .env.keysを.gitignoreに追加、鍵は別途scpでコピー
+
+**トラブルシューティング対応**:
+- ユーザー名がpiではなくishidafuuだったため、systemdでstatus=217/USERエラーが発生
+  → セットアップスクリプトでwhoamiを使用してユーザー名を自動検出
+- dotenvxが/usr/bin/dotenvxにインストールされていたが、サービスファイルでは/usr/local/bin/dotenvxを指定していたため、status=203/EXECエラーが発生
+  → セットアップスクリプトでwhich dotenvxを使用してパスを自動検出
+- サービステンプレートをプレースホルダー方式に変更し、環境に依存しない汎用的な設定を実現
+- ドキュメントにトラブルシューティングセクションを追加（ユーザー名エラー、dotenvxパスエラー）
 
 ---
 
