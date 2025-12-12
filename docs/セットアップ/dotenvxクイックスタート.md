@@ -34,22 +34,34 @@ dotenvx --version
 
 ### 1.2 環境変数ファイルを作成
 
+Tennis Discovery Agentでは、環境変数を2つのファイルに分離して管理します：
+- **`.env`** - 機密情報（暗号化）
+- **`.env.config`** - 非機密情報（平文）
+
 ```bash
 # プロジェクトディレクトリに移動
 cd ~/path/to/isdf_tennis_discovery_agent
 
-# .env.exampleをコピーして.envを作成
-cp .env.example .env
+# .env.templateをコピーして.envを作成
+cp .env.template .env
 
-# .envを編集して実際の値を設定
+# .envを編集して機密情報を設定
 nano .env
 ```
 
-`.env`に以下の値を設定：
+**`.env`** に以下の機密情報を設定：
 ```bash
 DISCORD_BOT_TOKEN=your_actual_discord_token
 GEMINI_API_KEY=your_actual_gemini_api_key
 GITHUB_TOKEN=your_actual_github_token
+```
+
+**`.env.config`** に以下の非機密情報を設定（既に作成済みなので編集のみ）：
+```bash
+nano .env.config
+```
+
+```bash
 GITHUB_REPO=your_username/tennis-vault
 OBSIDIAN_PATH=sessions
 OBSIDIAN_VAULT_PATH=./obsidian_vault
@@ -177,25 +189,76 @@ pi-deploy-tennis-bot
 
 ---
 
-## 4️⃣ 環境変数の更新
+## 4️⃣ 既存環境からの移行
 
-環境変数を追加・変更する場合：
+既に暗号化された`.env`ファイルがある場合、機密情報と非機密情報を分離するための移行スクリプトが用意されています。
+
+```bash
+# Mac側で実行
+cd ~/path/to/isdf_tennis_discovery_agent
+
+# 移行スクリプトを実行
+bash scripts/migrate_env_config.sh
+```
+
+このスクリプトは以下を自動実行します：
+1. 現在の暗号化された`.env`から値を取得
+2. 非機密情報を`.env.config`に設定
+3. 機密情報のみの新しい`.env`を作成
+4. 新しい`.env`を暗号化
+5. 元の`.env`を`.env.backup`として保存
+
+移行完了後、動作確認を行ってください：
+```bash
+# 動作確認
+python check_setup.py
+
+# 問題なければバックアップを削除
+rm .env.backup
+```
+
+---
+
+## 5️⃣ 環境変数の更新
+
+### 機密情報を追加・変更する場合（`.env`）
 
 ```bash
 # Mac側で.envを編集
-# （まず復号化）
-dotenvx run -- cat .env.example > .env.tmp
-# または直接編集
+# 復号化された状態で編集するには、dotenvx getで値を確認してから編集
+dotenvx get DISCORD_BOT_TOKEN  # 現在の値を確認
 
-# .envに新しい変数を追加
-echo "NEW_VARIABLE=new_value" >> .env
+# 平文の.envを一時的に作成して編集
+# （または既存の暗号化ファイルを直接編集）
+nano .env
+
+# 新しい機密変数を追加
+echo "NEW_SECRET_VARIABLE=secret_value" >> .env
 
 # 再暗号化
 dotenvx encrypt -f .env
 
 # Gitにコミット
 git add .env
-git commit -m "Add NEW_VARIABLE to environment"
+git commit -m "Add NEW_SECRET_VARIABLE to environment"
+git push
+
+# デプロイ
+pi-deploy-tennis-bot
+```
+
+### 非機密情報を追加・変更する場合（`.env.config`）
+
+```bash
+# Mac側で.env.configを編集（平文なのでそのまま編集可能）
+nano .env.config
+
+# 新しい非機密変数を追加
+echo "NEW_CONFIG_VARIABLE=config_value" >> .env.config
+
+# Gitにコミット（暗号化不要）
+git add .env.config
+git commit -m "Add NEW_CONFIG_VARIABLE to config"
 git push
 
 # デプロイ
