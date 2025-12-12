@@ -61,7 +61,7 @@ async def send_session_embed(
     extra_fields: Optional[list[dict]] = None,
     custom_title: Optional[str] = None,
     custom_description: Optional[str] = None,
-) -> None:
+) -> discord.Message:
     """
     Build and send session result embed.
 
@@ -74,6 +74,9 @@ async def send_session_embed(
         extra_fields: Optional extra fields
         custom_title: Optional custom title
         custom_description: Optional custom description
+
+    Returns:
+        The edited Discord message
     """
     # Get previous log summary
     previous_log = get_previous_log_summary(
@@ -93,8 +96,8 @@ async def send_session_embed(
         custom_description=custom_description,
     )
 
-    # Send embed
-    await thinking_msg.edit(content=None, embed=embed)
+    # Send embed and return the message
+    return await thinking_msg.edit(content=None, embed=embed)
 
 
 async def handle_message_error(
