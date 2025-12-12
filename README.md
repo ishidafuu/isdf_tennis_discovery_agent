@@ -63,9 +63,9 @@ bash deployment/scripts/setup-raspberry-pi.sh
 
 詳細ガイド：
 - **全体の流れ**: [SETUP.md](./SETUP.md)
-- **Discord Bot作成**: [docs/DISCORD_SETUP.md](./docs/DISCORD_SETUP.md)
-- **dotenvxクイックスタート**: [docs/QUICKSTART_DOTENVX.md](./docs/QUICKSTART_DOTENVX.md) 🔐
-- **dotenvx詳細ガイド**: [docs/DOTENVX_SETUP.md](./docs/DOTENVX_SETUP.md)
+- **Discord Bot作成**: [docs/セットアップ/Discordボット.md](./docs/セットアップ/Discordボット.md)
+- **dotenvxクイックスタート**: [docs/セットアップ/dotenvxクイックスタート.md](./docs/セットアップ/dotenvxクイックスタート.md) 🔐
+- **dotenvx詳細ガイド**: [docs/セットアップ/dotenvx設定.md](./docs/セットアップ/dotenvx設定.md)
 
 ### 2. 実行
 
@@ -172,7 +172,7 @@ isdf_tennis_discovery_agent/
 
 **✅ Phase 1-4 全完了！（48/48タスク 100%）**
 
-詳細は [`docs/FEATURES.md`](./docs/FEATURES.md) を参照してください。
+詳細は [`docs/使い方/機能一覧.md`](./docs/使い方/機能一覧.md) を参照してください。
 
 ## 🔧 技術スタック
 
@@ -190,15 +190,17 @@ isdf_tennis_discovery_agent/
 ## 📚 ドキュメント
 
 ### ユーザー向け
-- **[ストーリーガイド](./docs/STORY_GUIDE.md)** 🌟 - 3ヶ月で上達するまでの物語（おすすめ！）
-- **[使い方ガイド](./docs/USER_GUIDE.md)** - チャンネル別の使い方、Tips
+- **[ドキュメント索引](./docs/index.md)** 📖 - すべてのドキュメントの入り口
+- **[ストーリーガイド](./docs/使い方/ストーリーガイド.md)** 🌟 - 3ヶ月で上達するまでの物語（おすすめ！）
+- **[基本的な使い方](./docs/使い方/基本的な使い方.md)** - チャンネル別の使い方、Tips
 - **[セットアップガイド](./SETUP.md)** - 環境構築手順
 
 ### 開発者向け
-- **[機能一覧](./docs/FEATURES.md)** - 全機能の詳細説明
-- **[アーキテクチャ](./docs/ARCHITECTURE.md)** - システム構成図・データフロー
-- **[実装計画](./docs/plan.md)** - Phase 1-4のタスクリスト
-- **[開発ログ](./docs/session-log.md)** - 実装履歴
+- **[機能一覧](./docs/使い方/機能一覧.md)** - 全機能の詳細説明
+- **[アーキテクチャ](./docs/開発/概要/アーキテクチャ.md)** - システム構成図・データフロー
+- **[詳細アーキテクチャ](./docs/開発/技術/詳細アーキテクチャ.md)** - 技術詳細
+- **[実装計画](./docs/開発/plan.md)** - Phase 1-4のタスクリスト
+- **[開発ログ](./docs/開発/session-log.md)** - 実装履歴
 - **[プロジェクト管理](./CLAUDE.md)** - コーディング規約・自律行動ルール
 
 ## 💰 コスト試算
@@ -219,7 +221,7 @@ isdf_tennis_discovery_agent/
 - プライベートリポジトリで管理
 - 年1回程度、鍵をローテーション推奨
 
-詳細は [docs/QUICKSTART_DOTENVX.md](./docs/QUICKSTART_DOTENVX.md) を参照してください。
+詳細は [docs/セットアップ/dotenvxクイックスタート.md](./docs/セットアップ/dotenvxクイックスタート.md) を参照してください。
 
 ## 📄 ライセンス
 
@@ -229,4 +231,4 @@ MIT License
 
 **✅ Phase 1-4 全実装完了**: 音声メモからAI分析・予測まで、すべての機能が利用可能です。
 
-詳細な機能説明は [`docs/FEATURES.md`](./docs/FEATURES.md) をご覧ください。
+詳細な機能説明は [`docs/使い方/機能一覧.md`](./docs/使い方/機能一覧.md) をご覧ください。
