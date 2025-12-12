@@ -35,8 +35,10 @@ git clone https://github.com/ishidafuu/isdf_tennis_discovery_agent.git
 cd isdf_tennis_discovery_agent
 
 # 環境変数の設定
-cp .env.example .env
-# .env ファイルを編集して、APIキーを設定
+# 機密情報（.env）と非機密情報（.env.config）を分離して管理
+cp .env.template .env
+# .env ファイルを編集して、APIキー等の機密情報を設定
+# .env.config ファイルを編集して、リポジトリ名等の非機密情報を設定
 
 # 依存パッケージのインストール
 python3 -m venv venv
@@ -135,7 +137,8 @@ isdf_tennis_discovery_agent/
 │   ├── FEATURES.md       # 機能一覧（詳細）
 │   ├── plan.md           # 実装計画
 │   └── session-log.md    # 開発ログ
-├── .env.example          # 環境変数テンプレート
+├── .env.template         # 機密情報テンプレート
+├── .env.config           # 非機密情報（平文）
 ├── requirements.txt      # 依存パッケージ
 ├── SETUP.md              # セットアップガイド
 └── main.py               # エントリーポイント
@@ -214,10 +217,16 @@ isdf_tennis_discovery_agent/
 
 ### dotenvx導入後の環境変数管理
 
+環境変数は2つのファイルに分離して管理します：
+- **`.env`** - 機密情報のみ（dotenvxで暗号化してGitにコミット）
+  - `DISCORD_BOT_TOKEN`、`GEMINI_API_KEY`、`GITHUB_TOKEN`
+- **`.env.config`** - 非機密情報（平文でGitにコミット可能）
+  - `GITHUB_REPO`、`OBSIDIAN_PATH`、`ADMIN_USER_ID`等
+
+セキュリティルール：
 - **暗号化された`.env`**をGitにコミット（平文の`.env`はコミット禁止）
 - **`.env.keys`（暗号化鍵）**は絶対にGitにコミットしない（`.gitignore`で除外済み）
 - `.env.keys`のパーミッションを`600`に設定（所有者のみ読み書き可能）
-- APIキー（Discord Bot Token、Gemini API Key、GitHub Token）は暗号化された`.env`で管理
 - プライベートリポジトリで管理
 - 年1回程度、鍵をローテーション推奨
 

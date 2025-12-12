@@ -173,6 +173,11 @@ git push origin main
 - **ファイル名の日本語化**: ドキュメントファイルを日本語名に統一（例: `使い方ガイド.md` → `基本的な使い方.md`）
 - **インデックスファイル更新**: `docs/index.md`、各カテゴリの`index.md`を新構造に対応
 - **README.md更新**: 新しいドキュメント構造へのリンクを更新
+- **環境変数の分離**: 機密情報（`.env`）と非機密情報（`.env.config`）を分離
+  - `.env` - 機密情報のみ（dotenvxで暗号化）
+  - `.env.config` - 非機密情報（平文でGitコミット可能）
+  - `src/config.py` - 両ファイルを読み込むように更新
+  - `scripts/migrate_env_config.sh` - 移行スクリプトを追加
 
 ---
 
@@ -199,10 +204,24 @@ git push origin main
 
 ### dotenvx導入後の環境変数管理
 
+#### ファイル構成
+- **`.env`** - 機密情報のみ（dotenvxで暗号化してGitにコミット）
+  - `DISCORD_BOT_TOKEN`
+  - `GEMINI_API_KEY`
+  - `GITHUB_TOKEN`
+- **`.env.config`** - 非機密情報（平文でGitにコミット可能）
+  - `GITHUB_REPO`
+  - `OBSIDIAN_PATH`
+  - `OBSIDIAN_VAULT_PATH`
+  - `ADMIN_USER_ID`
+  - `DEBUG`
+  - その他アプリケーション設定
+- **`.env.keys`** - 暗号化キー（**絶対にコミット禁止**、`.gitignore`で除外済み）
+
+#### セキュリティルール
 - **暗号化された `.env`** をGitにコミット（平文の.envはコミット禁止）
-- **`.env.keys` ファイル**を絶対にGitにコミットしない（`.gitignore`で除外済み）
+- **`.env.keys` ファイル**を絶対にGitにコミットしない
 - **`.env.keys`のパーミッション**を`600`に設定（所有者のみ読み書き可能）
-- **Discord Bot Token**、**Gemini API Key**、**GitHub Token**は暗号化された`.env`で管理
 - **プライベートリポジトリ**で運用（練習内容は個人情報）
 - **Obsidian Vault**の GitHub リポジトリもプライベート推奨
 - **鍵のローテーション**: 年1回程度、新しい鍵で再暗号化を推奨

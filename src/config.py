@@ -11,8 +11,11 @@ from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from dotenv import load_dotenv
 
-# Load environment variables from .env file
-load_dotenv()
+# Load environment variables from multiple files
+# 1. First load .env.config (non-sensitive settings)
+# 2. Then load .env (sensitive settings, overrides .env.config if keys overlap)
+load_dotenv('.env.config', override=False)  # Load config first
+load_dotenv('.env', override=True)  # Load secrets, override if needed
 
 
 class Settings(BaseSettings):

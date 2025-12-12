@@ -135,8 +135,8 @@ celerybeat.pid
 *.sage.py
 
 # Environments
-.env.keys
-.env.backup
+.env.keys          # dotenvx encryption keys (NEVER commit)
+.env.backup        # Backup files from migration
 .envrc
 .venv
 env/
@@ -144,6 +144,8 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+
+# Note: .env (encrypted by dotenvx) and .env.config (plaintext) are committed to Git
 
 # Spyder project settings
 .spyderproject
