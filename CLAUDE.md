@@ -19,7 +19,10 @@
 - `src/ai/` - Gemini API処理、プロンプト、構造化データ抽出
 - `src/storage/` - Markdown生成、GitHub連携、Obsidian管理
 - `src/models/` - データモデル（PracticeSession）
-- `docs/` - プロジェクトドキュメント、実装計画、進捗管理
+- `docs/` - プロジェクトドキュメント（3カテゴリ：開発・セットアップ・使い方）
+  - `docs/開発/` - 要件・仕様・技術詳細（開発者向け）
+  - `docs/セットアップ/` - 初回セットアップ手順
+  - `docs/使い方/` - エンドユーザー向けガイド
 - `tests/` - テストコード
 
 ## 重要なコマンド
@@ -162,6 +165,15 @@ git push origin main
 - **ドキュメント整備**: `docs/DOTENVX_SETUP.md`、`docs/QUICKSTART_DOTENVX.md`を追加
 - **.gitignore更新**: `.env.keys`を除外リストに追加してセキュリティ強化
 
+### 2025-12-12
+- **ドキュメント構造の大幅再編成**: 3カテゴリ（開発・セットアップ・使い方）に分類
+  - `docs/開発/` - 開発者向け要件・仕様・技術詳細
+  - `docs/セットアップ/` - 初回セットアップ手順
+  - `docs/使い方/` - エンドユーザー向けガイド
+- **ファイル名の日本語化**: ドキュメントファイルを日本語名に統一（例: `使い方ガイド.md` → `基本的な使い方.md`）
+- **インデックスファイル更新**: `docs/index.md`、各カテゴリの`index.md`を新構造に対応
+- **README.md更新**: 新しいドキュメント構造へのリンクを更新
+
 ---
 
 ## 技術的制約・既知の問題
@@ -199,10 +211,25 @@ git push origin main
 
 ## 参考ドキュメント
 
-- **Phase 1全体**: `docs/improvements/phases/01-foundation/index.md`
-- **実装ステータス**: `docs/improvements/IMPLEMENTATION_STATUS.md`
-- **クイックスタート**: `docs/improvements/QUICKSTART.md`
+### 開発者向け
+- **ドキュメント索引**: `docs/index.md`
+- **Phase 1全体**: `docs/開発/フェーズ/01-基盤強化/index.md`
+- **実装ステータス**: `docs/開発/実装状況.md`
+- **プロジェクト計画**: `docs/開発/plan.md`
+- **開発ログ**: `docs/開発/session-log.md`
+- **アーキテクチャ**: `docs/開発/概要/アーキテクチャ.md`
+- **技術詳細**: `docs/開発/技術/`
+
+### セットアップ
 - **セットアップガイド**: `SETUP.md`
-- **プロジェクト管理ガイド**: このファイル（CLAUDE.md）の「自律行動ルール」セクション
-- **dotenvxクイックスタート**: `docs/QUICKSTART_DOTENVX.md`
-- **dotenvx詳細ガイド**: `docs/DOTENVX_SETUP.md`
+- **クイックスタート**: `docs/セットアップ/クイックスタート.md`
+- **dotenvxクイックスタート**: `docs/セットアップ/dotenvxクイックスタート.md`
+- **dotenvx詳細ガイド**: `docs/セットアップ/dotenvx設定.md`
+- **Discordボット設定**: `docs/セットアップ/Discordボット.md`
+- **Raspberry Pi設定**: `docs/セットアップ/RaspberryPi.md`
+
+### ユーザー向け
+- **基本的な使い方**: `docs/使い方/基本的な使い方.md`
+- **ストーリーガイド**: `docs/使い方/ストーリーガイド.md`
+- **機能一覧**: `docs/使い方/機能一覧.md`
+- **コマンドリファレンス**: `docs/使い方/リファレンス/コマンド.md`
