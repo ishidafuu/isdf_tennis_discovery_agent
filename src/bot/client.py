@@ -14,7 +14,7 @@ from src.ai.gemini_client import GeminiClient
 from src.storage.github_sync import GitHubSync
 from src.storage.markdown_builder import MarkdownBuilder
 from src.storage.obsidian_manager import ObsidianManager
-from src.bot.channel_handler import detect_scene_from_channel, is_reflection_channel, is_allowed_channel
+from src.bot.channel_handler import detect_scene_from_channel, is_reflection_channel, is_allowed_channel, is_tennis_memo_channel
 from src.scheduler.scheduler_manager import SchedulerManager
 
 # Import handlers and helpers
@@ -84,9 +84,9 @@ class TennisDiscoveryBot(commands.Bot):
             await handle_reply_to_memo(self, message)
             return
 
-        # Check if the message is from an allowed channel
-        # Only respond in designated channels (壁打ち, スクール, 試合, フリー練習, 振り返り, 質問, 分析)
-        if not is_allowed_channel(message.channel.name):
+        # Check if the message is from the tennis memo input channel
+        # Use channel ID-based filtering for more precise control
+        if not is_tennis_memo_channel(message.channel.id):
             return
 
         # Process attachments (audio, images, videos)
@@ -109,11 +109,8 @@ class TennisDiscoveryBot(commands.Bot):
         if message.content and not message.content.startswith('!'):
             # Skip very short messages (probably not practice notes)
             if len(message.content.strip()) > 10:
-                # Check if this is a reflection/review channel
-                if is_reflection_channel(message.channel.name):
-                    await process_reflection_message(self, message)
-                else:
-                    await process_text_message(self, message)
+                # All messages in tennis memo channel are treated as practice memos
+                await process_text_message(self, message)
                 return
 
         # Process commands

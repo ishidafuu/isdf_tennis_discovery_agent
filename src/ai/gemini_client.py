@@ -233,6 +233,50 @@ class GeminiClient:
 
         return session, scene_data
 
+    async def is_tennis_related(self, text: str) -> bool:
+        """
+        Check if the given text is related to tennis.
+
+        Args:
+            text: Text to check (transcription or message content)
+
+        Returns:
+            True if tennis-related, False otherwise
+        """
+        prompt = f"""以下のテキストがテニスに関連する内容かどうかを判定してください。
+
+テキスト:
+{text}
+
+**判定基準:**
+- テニスの練習、試合、技術、戦術に関する内容
+- テニス用語（サーブ、ボレー、ストローク、フォアハンド、バックハンド、スマッシュなど）が含まれる
+- テニスコートでの出来事や経験
+- テニス用具（ラケット、ボール、シューズなど）に関する内容
+
+**注意:**
+- 単に「テニス」という単語があるだけでなく、実質的にテニスについて話しているかを判定する
+- 挨拶や雑談のみの内容は False とする
+
+JSON形式で回答してください:
+{{"is_tennis_related": true}} または {{"is_tennis_related": false}}
+"""
+
+        response = self.model.generate_content(
+            prompt,
+            generation_config=genai.GenerationConfig(
+                response_mime_type="application/json"
+            )
+        )
+
+        try:
+            data = json.loads(response.text)
+            return data.get("is_tennis_related", False)
+        except json.JSONDecodeError:
+            # JSONパースに失敗した場合は、安全側に倒してFalseを返す
+            print(f"⚠️ Failed to parse tennis relevance check response: {response.text}")
+            return False
+
     async def generate_followup_question(self, session: PracticeSession) -> str:
         """
         Generate a Socratic follow-up question to deepen reflection.

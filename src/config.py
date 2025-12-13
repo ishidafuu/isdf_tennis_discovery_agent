@@ -32,6 +32,14 @@ class Settings(BaseSettings):
         ...,
         description="Discord bot token for authentication"
     )
+    tennis_memo_channel_id: Optional[int] = Field(
+        default=None,
+        description="Discord channel ID for tennis memo input"
+    )
+    tennis_output_channel_id: Optional[int] = Field(
+        default=None,
+        description="Discord channel ID for tennis analysis output"
+    )
 
     # Gemini AI
     gemini_api_key: str = Field(

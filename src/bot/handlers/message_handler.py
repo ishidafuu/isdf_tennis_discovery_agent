@@ -28,6 +28,7 @@ from src.bot.helpers.markdown_helpers import (
     push_media_memo_to_github,
 )
 from src.bot.helpers.embed_builder import SessionEmbedBuilder
+from src.bot.helpers.output_channel import post_detailed_analysis, post_followup_question
 from src.models.session import PracticeSession
 from src.constants import MAX_FILE_SIZE_BYTES
 
@@ -71,7 +72,34 @@ async def process_voice_message(
             print(f"📥 Downloaded audio file: {attachment.filename} ({attachment.size} bytes)")
             print(f"🎬 Detected scene: {scene_info.name} ({scene_info.type})")
 
-        # Process with Gemini (scene-aware)
+        # Transcribe audio first to check tennis relevance
+        await update_thinking_message(thinking_msg, "🎙️ 音声を文字起こし中...")
+
+        # Upload audio file and transcribe
+        import google.generativeai as genai
+        audio_file = genai.upload_file(path=tmp_path)
+        transcribe_response = bot.gemini_client.model.generate_content([
+            bot.gemini_client.SYSTEM_PROMPT,
+            "以下の音声を文字起こししてください。話者の言葉をそのまま記録してください。",
+            audio_file
+        ])
+        transcript = transcribe_response.text.strip()
+
+        # Check if content is tennis-related
+        await update_thinking_message(thinking_msg, "🔍 テニス関連の内容か確認中...")
+        is_tennis = await bot.gemini_client.is_tennis_related(transcript)
+
+        if not is_tennis:
+            # Delete thinking message
+            await thinking_msg.delete()
+            # React with ❓ to indicate non-tennis content
+            await message.add_reaction("❓")
+            # Clean up temporary file
+            if tmp_path:
+                Path(tmp_path).unlink(missing_ok=True)
+            return
+
+        # Process with Gemini (scene-aware) - using already transcribed text
         await update_thinking_message(thinking_msg, f"🧠 Geminiで分析中... (シーン: {scene_info.name})")
         session, scene_data = await bot.gemini_client.process_voice_message(tmp_path, scene_info.type)
 
@@ -86,29 +114,50 @@ async def process_voice_message(
             )
             print(f"💾 Saved locally: {local_path}")
 
-        # Push to GitHub (with scene name)
+        # Push to GitHub (without scene name, as scenes are no longer used)
         await update_thinking_message(thinking_msg, "📤 GitHubにアップロード中...")
-        file_url = bot.github_sync.push_session(session, scene_name=scene_info.name)
+        try:
+            file_url = bot.github_sync.push_session(session, scene_name="practice")
+        except Exception as e:
+            # Delete thinking message and react with error
+            await thinking_msg.delete()
+            await message.add_reaction("❌")
+            if bot.debug:
+                print(f"❌ Failed to push to GitHub: {e}")
+            # Clean up temporary file
+            if tmp_path:
+                Path(tmp_path).unlink(missing_ok=True)
+            return
 
         # Clean up temporary file
         if tmp_path:
             Path(tmp_path).unlink(missing_ok=True)
             tmp_path = None
 
-        # Send result embed
-        sent_message = await send_session_embed(
-            thinking_msg=thinking_msg,
-            session=session,
-            scene_info=scene_info,
-            file_url=file_url,
+        # Delete thinking message
+        await thinking_msg.delete()
+
+        # Reply with summary only
+        summary_text = session.summary if session.summary else "メモを記録しました"
+        await message.reply(f"📝 {summary_text}")
+
+        # Post detailed analysis to output channel
+        await post_detailed_analysis(
             bot=bot,
+            session=session,
+            user_name=message.author.display_name,
+            timestamp=session.date
         )
 
-        # Generate and send follow-up question
+        # Generate and post follow-up question to output channel
         if session.success_patterns or session.failure_patterns:
             followup = await bot.gemini_client.generate_followup_question(session)
             if followup:
-                await message.reply(f"💭 {followup}")
+                await post_followup_question(
+                    bot=bot,
+                    question=followup,
+                    user_mention=message.author.mention
+                )
 
     except Exception as e:
         await handle_message_error(message, e, bot.debug, "voice message processing")
@@ -149,6 +198,17 @@ async def process_text_message(
             if urls:
                 print(f"🔗 Found URLs: {urls}")
 
+        # Check if content is tennis-related
+        await update_thinking_message(thinking_msg, "🔍 テニス関連の内容か確認中...")
+        is_tennis = await bot.gemini_client.is_tennis_related(message.content)
+
+        if not is_tennis:
+            # Delete thinking message
+            await thinking_msg.delete()
+            # React with ❓ to indicate non-tennis content
+            await message.add_reaction("❓")
+            return
+
         # Process with Gemini (scene-aware)
         await update_thinking_message(thinking_msg, f"🧠 Geminiで分析中... (シーン: {scene_info.name})")
         session, scene_data = await bot.gemini_client.process_text_message(
@@ -160,27 +220,41 @@ async def process_text_message(
         if bot.debug:
             print(f"✅ Text processed: {len(scene_data.get('tags', []))} tags")
 
-        # Push to GitHub (with scene name)
+        # Push to GitHub (without scene name, as scenes are no longer used)
         await update_thinking_message(thinking_msg, "📤 GitHubにアップロード中...")
-        file_url = bot.github_sync.push_session(session, scene_name=scene_info.name)
+        try:
+            file_url = bot.github_sync.push_session(session, scene_name="practice")
+        except Exception as e:
+            # Delete thinking message and react with error
+            await thinking_msg.delete()
+            await message.add_reaction("❌")
+            if bot.debug:
+                print(f"❌ Failed to push to GitHub: {e}")
+            return
 
-        # Build extra fields for URLs if present
-        extra_fields = None
-        if urls:
-            url_text = "\n".join([f"• {url}" for url in urls[:3]])
-            extra_fields = [
-                {"name": "🔗 参考URL", "value": url_text, "inline": False}
-            ]
+        # Delete thinking message
+        await thinking_msg.delete()
 
-        # Send result embed
-        sent_message = await send_session_embed(
-            thinking_msg=thinking_msg,
-            session=session,
-            scene_info=scene_info,
-            file_url=file_url,
+        # React with ✅ to indicate success
+        await message.add_reaction("✅")
+
+        # Post detailed analysis to output channel
+        await post_detailed_analysis(
             bot=bot,
-            extra_fields=extra_fields,
+            session=session,
+            user_name=message.author.display_name,
+            timestamp=session.date
         )
+
+        # Generate and post follow-up question to output channel
+        if session.success_patterns or session.failure_patterns:
+            followup = await bot.gemini_client.generate_followup_question(session)
+            if followup:
+                await post_followup_question(
+                    bot=bot,
+                    question=followup,
+                    user_mention=message.author.mention
+                )
 
     except Exception as e:
         await handle_message_error(message, e, bot.debug, "text message processing")

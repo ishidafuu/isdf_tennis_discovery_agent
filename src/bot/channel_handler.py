@@ -14,6 +14,7 @@ from src.constants import (
     DEFAULT_SCENE_NAME,
 )
 from src.models.scene_data import SceneInfo
+from src.config import settings
 
 
 def detect_scene_from_channel(channel_name: str) -> tuple[str, str]:
@@ -155,3 +156,36 @@ def is_allowed_channel(channel_name: str) -> bool:
 
     # どのチャンネルにもマッチしない場合はFalse
     return False
+
+
+def is_tennis_memo_channel(channel_id: int) -> bool:
+    """
+    テニスメモ入力チャンネルかどうかを判定
+
+    Args:
+        channel_id: DiscordチャンネルID
+
+    Returns:
+        テニスメモチャンネルならTrue、それ以外はFalse
+    """
+    if settings.tennis_memo_channel_id is None:
+        # チャンネルIDが設定されていない場合は、旧来の名前ベース判定にフォールバック
+        return False
+
+    return channel_id == settings.tennis_memo_channel_id
+
+
+def is_tennis_output_channel(channel_id: int) -> bool:
+    """
+    テニス分析出力チャンネルかどうかを判定
+
+    Args:
+        channel_id: DiscordチャンネルID
+
+    Returns:
+        テニス出力チャンネルならTrue、それ以外はFalse
+    """
+    if settings.tennis_output_channel_id is None:
+        return False
+
+    return channel_id == settings.tennis_output_channel_id
