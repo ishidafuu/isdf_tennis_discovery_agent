@@ -13,6 +13,7 @@ from dotenv import load_dotenv
 
 from src.scheduler.weekly_review import WeeklyReviewGenerator
 from src.scheduler.reminders import ReminderManager
+from src.models.scene_data import SearchFilters
 
 # Load environment variables
 load_dotenv()
@@ -181,7 +182,7 @@ class SchedulerManager:
 
             # Search for memos from yesterday
             memos = self.bot.obsidian_manager.search(
-                filters={'date_range': (yesterday, datetime.now())},
+                filters=SearchFilters(date_range=(yesterday, datetime.now())),
                 limit=None
             )
 

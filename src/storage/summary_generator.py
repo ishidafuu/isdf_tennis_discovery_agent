@@ -12,6 +12,8 @@ import yaml
 import re
 from collections import Counter
 
+from src.models.scene_data import SearchFilters
+
 
 class SummaryGenerator:
     """まとめページ生成エンジン"""
@@ -188,7 +190,7 @@ class SummaryGenerator:
         if technique:
             # Filter by technique tag
             memos = self.obsidian_manager.search(
-                filters={'tags': [technique]},
+                filters=SearchFilters(tags=[technique]),
                 limit=None
             )
         else:
