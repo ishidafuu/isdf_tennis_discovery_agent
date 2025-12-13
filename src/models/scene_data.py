@@ -4,7 +4,8 @@ Scene-specific data models.
 Type-safe models for different practice scenes using Pydantic.
 """
 from typing import Literal, Union
-from pydantic import BaseModel, Field
+from datetime import datetime
+from pydantic import BaseModel, Field, field_validator
 
 import discord
 
@@ -137,3 +138,19 @@ class SearchFilters(BaseModel):
         default=False,
         description="Require all tags to match"
     )
+
+    @field_validator('date_range', mode='before')
+    @classmethod
+    def convert_datetime_to_str(cls, v):
+        """Convert datetime objects to string format (YYYY-MM-DD)."""
+        if v is None:
+            return v
+        if isinstance(v, tuple) and len(v) == 2:
+            start, end = v
+            # Convert datetime to string if needed
+            if isinstance(start, datetime):
+                start = start.strftime('%Y-%m-%d')
+            if isinstance(end, datetime):
+                end = end.strftime('%Y-%m-%d')
+            return (start, end)
+        return v
