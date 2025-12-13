@@ -4,6 +4,32 @@
 
 ---
 
+## 2025-12-13 (SearchFilters型不整合の修正)
+**完了**: SearchFiltersの型不整合によるAttributeErrorを修正
+**変更ファイル**:
+- `src/models/scene_data.py` - SearchFiltersにdatetime→文字列変換のfield_validatorを追加
+- `src/scheduler/scheduler_manager.py` - SearchFiltersオブジェクトを使用
+- `src/storage/summary_generator.py` - SearchFiltersオブジェクトを使用
+
+**実装内容**:
+- `obsidian_manager.search()`がSearchFilters型を期待しているのに、呼び出し側で辞書を渡していた問題を解決
+- SearchFiltersに`field_validator`を追加し、datetimeオブジェクトを自動的に'YYYY-MM-DD'文字列に変換
+- scheduler_manager.pyとsummary_generator.pyで辞書の代わりにSearchFiltersオブジェクトを使用
+
+**影響**:
+- `AttributeError: 'dict' object has no attribute 'keywords'` エラーが解消
+- 日次まとめページ生成機能（午前3時の定期実行）が正常に動作するようになる
+
+**次回の作業**:
+- Raspberry Piでの動作確認
+- 翌朝の定期実行が成功することを確認
+
+**備考**:
+- Pydantic v2のfield_validatorを活用して型の柔軟性を向上
+- 後方互換性を保ちつつ、型安全性を強化
+
+---
+
 ## 2025-12-12 (環境変数の分離)
 **完了**: 環境変数を機密情報と非機密情報に分離
 **変更ファイル**:
