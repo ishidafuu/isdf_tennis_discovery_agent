@@ -12,18 +12,25 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from dotenv import load_dotenv
 
 # Load environment variables from multiple files
-# 1. First load .env.config (non-sensitive settings)
-# 2. Then load .env (sensitive settings, overrides .env.config if keys overlap)
-load_dotenv('.env.config', override=False)  # Load config first
-load_dotenv('.env', override=True)  # Load secrets, override if needed
+# Note: When running via dotenvx (production), dotenvx handles .env decryption
+# and sets environment variables. In that case, load_dotenv() is not needed.
+# For local development without dotenvx, we load the files manually.
+if not os.getenv('DOTENVX_PUBLIC_KEY'):
+    # Running without dotenvx (local development)
+    load_dotenv('.env.config', override=False)  # Load config first
+    load_dotenv('.env', override=True)  # Load secrets, override if needed
+else:
+    # Running with dotenvx (production) - only load .env.config
+    # dotenvx already loaded and decrypted .env
+    load_dotenv('.env.config', override=False)
 
 
 class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
 
     model_config = SettingsConfigDict(
-        env_file=".env",
-        env_file_encoding="utf-8",
+        # Note: Don't specify env_file here - we load it manually above
+        # to handle dotenvx encryption properly
         case_sensitive=False,
         extra='ignore',  # Ignore extra environment variables (e.g., dotenvx keys)
     )
